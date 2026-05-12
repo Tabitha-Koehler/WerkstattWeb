@@ -27,6 +27,14 @@ export class InvoicesService {
 
   async processInvoiceFile(filePath: string): Promise<Invoice> {
     const filename = path.basename(filePath);
+
+    // Skip files that were already successfully processed
+    const existing = await this.invoiceRepo.findOne({ where: { pdfPath: filePath } });
+    if (existing) {
+      this.logger.log(`Bereits verarbeitet, übersprungen: ${filename}`);
+      return this.findOne(existing.id);
+    }
+
     this.logger.log(`Verarbeite Rechnung: ${filename}`);
 
     const invoice = this.invoiceRepo.create({

@@ -1,7 +1,8 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, HTTP_INTERCEPTORS } from '@angular/common/http';
+import { ZoneInterceptor } from './core/interceptors/zone.interceptor';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { providePrimeNG } from 'primeng/config';
@@ -77,6 +78,7 @@ import { InspectionStatusComponent } from './shared/inspection-status/inspection
   ],
   providers: [
     provideHttpClient(),
+    { provide: HTTP_INTERCEPTORS, useClass: ZoneInterceptor, multi: true },
     providePrimeNG({
       theme: {
         preset: Aura,
