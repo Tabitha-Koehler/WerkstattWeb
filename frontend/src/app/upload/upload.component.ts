@@ -81,11 +81,11 @@ export class UploadComponent {
     return 'bg-emerald-100 text-emerald-600';
   }
 
-  statusPiIcon(status: string, hasAnomalies?: boolean): string {
-    if (status === 'pending')   return 'pi pi-clock';
-    if (status === 'uploading') return 'pi pi-spin pi-spinner';
-    if (status === 'error')     return 'pi pi-times-circle';
-    if (status === 'done' && hasAnomalies) return 'pi pi-exclamation-triangle';
-    return 'pi pi-check-circle';
+  statusFaIcon(status: string, hasAnomalies?: boolean): string {
+    if (status === 'pending')   return 'fa-clock';
+    if (status === 'uploading') return 'fa-spinner fa-spin';
+    if (status === 'error')     return 'fa-circle-xmark';
+    if (status === 'done' && hasAnomalies) return 'fa-triangle-exclamation';
+    return 'fa-circle-check';
   }
 }

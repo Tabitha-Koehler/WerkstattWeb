@@ -6,65 +6,78 @@
       <h1 class="page-title">Fahrzeuge</h1>
       <p class="page-subtitle">Fuhrpark der Spedition</p>
     </div>
-    <p-button label="Fahrzeug hinzufügen" icon="pi pi-plus" (click)="openDialog()" />
+    <p-button label="Fahrzeug hinzufügen" icon="fa-solid fa-plus" (click)="openDialog()" />
   </div>
 
   <!-- Error -->
-  <div *ngIf="errorMsg" class="banner-error">⚠️ {{ errorMsg }}</div>
+  @if (errorMsg) {
+    <div class="banner-error">
+      <i class="fa-solid fa-triangle-exclamation"></i> {{ errorMsg }}
+    </div>
+  }
 
   <!-- Loading -->
-  <div *ngIf="loading" class="flex justify-center py-20">
-    <div class="spinner"></div>
-  </div>
+  @if (loading) {
+    <div class="flex justify-center py-20">
+      <div class="spinner"></div>
+    </div>
+  }
 
   <!-- Table card -->
-  <div *ngIf="!loading" class="card p-0 overflow-hidden">
-    <table class="data-table w-full">
-      <thead>
-        <tr>
-          <th>Kennzeichen</th>
-          <th>Typ</th>
-          <th>Hersteller</th>
-          <th>Modell</th>
-          <th>Baujahr</th>
-          <th class="text-right pr-4">Aktionen</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let v of vehicles" (click)="goToDetail(v)">
-          <td>
-            <span class="inline-flex items-center gap-2">
-              <span class="font-bold text-blue-600 dark:text-blue-400">{{ v.licensePlate }}</span>
-            </span>
-          </td>
-          <td>
-            <span class="badge-gray">{{ v.vehicleType ?? '–' }}</span>
-          </td>
-          <td class="font-medium">{{ v.manufacturer ?? '–' }}</td>
-          <td style="color:var(--surface-muted)">{{ v.model ?? '–' }}</td>
-          <td style="color:var(--surface-muted)">{{ v.year ?? '–' }}</td>
-          <td class="text-right pr-4" (click)="$event.stopPropagation()">
-            <p-button icon="pi pi-pencil" [text]="true" [rounded]="true" severity="secondary" size="small"
-                      (click)="openDialog(v)" pTooltip="Bearbeiten" />
-            <p-button icon="pi pi-trash" [text]="true" [rounded]="true" severity="danger" size="small"
-                      (click)="delete(v, $event)" pTooltip="Löschen" />
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  @if (!loading) {
+    <div class="card p-0 overflow-hidden">
+      <table class="data-table w-full">
+        <thead>
+          <tr>
+            <th>Kennzeichen</th>
+            <th>Typ</th>
+            <th>Hersteller</th>
+            <th>Modell</th>
+            <th>Baujahr</th>
+            <th class="text-right pr-4">Aktionen</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (v of vehicles; track v.id) {
+            <tr (click)="goToDetail(v)">
+              <td>
+                <span class="inline-flex items-center gap-2">
+                  <span class="font-bold text-blue-600 dark:text-blue-400">{{ v.licensePlate }}</span>
+                </span>
+              </td>
+              <td>
+                <span class="badge-gray">{{ v.vehicleType ?? '–' }}</span>
+              </td>
+              <td class="font-medium">{{ v.manufacturer ?? '–' }}</td>
+              <td style="color:var(--surface-muted)">{{ v.model ?? '–' }}</td>
+              <td style="color:var(--surface-muted)">{{ v.year ?? '–' }}</td>
+              <td class="text-right pr-4" (click)="$event.stopPropagation()">
+                <p-button icon="fa-solid fa-pen" [text]="true" [rounded]="true" severity="secondary" size="small"
+                          (click)="openDialog(v)" pTooltip="Bearbeiten" />
+                <p-button icon="fa-solid fa-trash" [text]="true" [rounded]="true" severity="danger" size="small"
+                          (click)="delete(v, $event)" pTooltip="Löschen" />
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
 
-    <div *ngIf="vehicles.length === 0" class="empty-state">
-      <span class="text-5xl">🚛</span>
-      <p class="font-medium">Noch keine Fahrzeuge</p>
-      <p class="text-sm">Rechnungen mit Kennzeichen werden automatisch erkannt.</p>
+      @if (vehicles.length === 0) {
+        <div class="empty-state">
+          <i class="fa-solid fa-truck text-5xl" style="color:var(--surface-muted)"></i>
+          <p class="font-medium">Noch keine Fahrzeuge</p>
+          <p class="text-sm">Rechnungen mit Kennzeichen werden automatisch erkannt.</p>
+        </div>
+      }
     </div>
-  </div>
+  }
 </div>
 
 <!-- Vehicle Dialog -->
-<app-vehicle-dialog
-  *ngIf="dialogOpen"
-  [vehicle]="editingVehicle"
-  (saved)="onSaved($event)"
-  (cancel)="dialogOpen = false">
-</app-vehicle-dialog>
+@if (dialogOpen) {
+  <app-vehicle-dialog
+    [vehicle]="editingVehicle"
+    (saved)="onSaved($event)"
+    (cancel)="dialogOpen = false">
+  </app-vehicle-dialog>
+}

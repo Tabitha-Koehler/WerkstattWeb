@@ -1,12 +1,14 @@
-<div *ngIf="loading" class="flex justify-center py-20">
-  <div class="spinner"></div>
-</div>
+@if (loading) {
+  <div class="flex justify-center py-20">
+    <div class="spinner"></div>
+  </div>
+}
 
-<ng-container *ngIf="!loading && invoice">
+@if (!loading && invoice) {
 
   <!-- Back + title row -->
   <div class="flex items-start gap-4 mb-6">
-    <p-button icon="pi pi-arrow-left" [text]="true" [rounded]="true" severity="secondary"
+    <p-button icon="fa-solid fa-arrow-left" [text]="true" [rounded]="true" severity="secondary"
       (click)="invoice.vehicleId ? router.navigate(['/vehicles', invoice.vehicleId]) : router.navigate(['/invoices'])" />
     <div class="flex-1 min-w-0">
       <h1 class="page-title truncate">{{ invoice.workshopName ?? 'Rechnung' }}</h1>
@@ -19,31 +21,37 @@
     <div class="flex items-center gap-2 shrink-0">
       <p-button
         [label]="showPdf ? 'PDF ausblenden' : 'PDF anzeigen'"
-        icon="pi pi-file-pdf"
+        icon="fa-solid fa-file-pdf"
         severity="secondary"
         [outlined]="true"
         (click)="showPdf = !showPdf" />
-      <p-button icon="pi pi-trash" severity="danger" [outlined]="true" (click)="deleteInvoice()"
+      <p-button icon="fa-solid fa-trash" severity="danger" [outlined]="true" (click)="deleteInvoice()"
                 pTooltip="Rechnung löschen" />
     </div>
   </div>
 
   <!-- Warning banner -->
-  <div *ngIf="anomalies().length > 0" class="banner-warning mb-4">
-    <span class="text-lg shrink-0">⚠️</span>
-    <div>
-      <strong>{{ anomalies().length }} unplausible Position(en) gefunden</strong>
-      <div *ngFor="let a of anomalies()" class="text-sm mt-1 opacity-80">
-        <strong>{{ a.description }}</strong> – {{ a.anomalyReason }}
+  @if (anomalies().length > 0) {
+    <div class="banner-warning mb-4">
+      <i class="fa-solid fa-triangle-exclamation text-lg shrink-0"></i>
+      <div>
+        <strong>{{ anomalies().length }} unplausible Position(en) gefunden</strong>
+        @for (a of anomalies(); track a.description) {
+          <div class="text-sm mt-1 opacity-80">
+            <strong>{{ a.description }}</strong> – {{ a.anomalyReason }}
+          </div>
+        }
       </div>
     </div>
-  </div>
+  }
 
   <!-- Error banner -->
-  <div *ngIf="invoice.processingError" class="banner-error mb-4">
-    <span class="text-lg shrink-0">❌</span>
-    <div><strong>Verarbeitungsfehler:</strong> {{ invoice.processingErrorMessage }}</div>
-  </div>
+  @if (invoice.processingError) {
+    <div class="banner-error mb-4">
+      <i class="fa-solid fa-circle-xmark text-lg shrink-0"></i>
+      <div><strong>Verarbeitungsfehler:</strong> {{ invoice.processingErrorMessage }}</div>
+    </div>
+  }
 
   <!-- Details + AI summary -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -51,10 +59,12 @@
     <div class="card">
       <h2 class="section-title mb-4">Rechnungsdetails</h2>
       <dl class="space-y-2">
-        <div *ngFor="let row of detailRows()" class="flex gap-3 text-sm">
-          <dt class="w-32 shrink-0" style="color:var(--surface-muted)">{{ row.label }}</dt>
-          <dd class="font-medium flex-1" style="color:var(--surface-text)" [innerHTML]="row.value"></dd>
-        </div>
+        @for (row of detailRows(); track row.label) {
+          <div class="flex gap-3 text-sm">
+            <dt class="w-32 shrink-0" style="color:var(--surface-muted)">{{ row.label }}</dt>
+            <dd class="font-medium flex-1" style="color:var(--surface-text)" [innerHTML]="row.value"></dd>
+          </div>
+        }
         <div class="flex gap-3 text-sm pt-1 border-t" style="border-color:var(--surface-border)">
           <dt class="w-32 shrink-0" style="color:var(--surface-muted)">Gesamtbetrag</dt>
           <dd class="font-bold text-blue-600 dark:text-blue-400 text-lg">
@@ -73,32 +83,40 @@
   </div>
 
   <!-- Inspections found -->
-  <div *ngIf="inspectionPositions().length > 0" class="card mb-4">
-    <h2 class="section-title mb-4">Prüfungen auf dieser Rechnung</h2>
-    <div class="flex gap-3 flex-wrap">
-      <div *ngFor="let insp of inspectionPositions()"
-           class="rounded-xl p-4 text-center min-w-36 border"
-           style="border-color:var(--surface-border); background:var(--surface-hover)">
-        <span class="badge-{{ insp.type.toLowerCase() }} text-sm px-3 py-1">{{ insp.type }}</span>
-        <div class="mt-2 text-xs space-y-0.5" style="color:var(--surface-muted)">
-          <div>{{ insp.inspectionDate | date:'dd.MM.yyyy' }}</div>
-          <div *ngIf="insp.nextDueDate">→ {{ insp.nextDueDate | date:'dd.MM.yyyy' }}</div>
-        </div>
+  @if (inspectionPositions().length > 0) {
+    <div class="card mb-4">
+      <h2 class="section-title mb-4">Prüfungen auf dieser Rechnung</h2>
+      <div class="flex gap-3 flex-wrap">
+        @for (insp of inspectionPositions(); track insp.type) {
+          <div class="rounded-xl p-4 text-center min-w-36 border"
+               style="border-color:var(--surface-border); background:var(--surface-hover)">
+            <span class="badge-{{ insp.type.toLowerCase() }} text-sm px-3 py-1">{{ insp.type }}</span>
+            <div class="mt-2 text-xs space-y-0.5" style="color:var(--surface-muted)">
+              <div>{{ insp.inspectionDate | date:'dd.MM.yyyy' }}</div>
+              @if (insp.nextDueDate) {
+                <div>→ {{ insp.nextDueDate | date:'dd.MM.yyyy' }}</div>
+              }
+            </div>
+          </div>
+        }
       </div>
     </div>
-  </div>
+  }
 
   <!-- Operating supplies -->
-  <div *ngIf="supplies().length > 0" class="card mb-4">
-    <h2 class="section-title mb-4">Betriebsmittel</h2>
-    <div class="flex gap-2 flex-wrap">
-      <span *ngFor="let s of supplies()"
-            class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium"
-            style="background:rgb(234 88 12/0.1); color:#c2410c; border:1px solid rgb(234 88 12/0.2)">
-        🛢️ {{ s.type }} · {{ s.quantity }} {{ s.unit }}
-      </span>
+  @if (supplies().length > 0) {
+    <div class="card mb-4">
+      <h2 class="section-title mb-4">Betriebsmittel</h2>
+      <div class="flex gap-2 flex-wrap">
+        @for (s of supplies(); track s.type) {
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium"
+                style="background:rgb(234 88 12/0.1); color:#c2410c; border:1px solid rgb(234 88 12/0.2)">
+            <i class="fa-solid fa-oil-can text-xs"></i> {{ s.type }} · {{ s.quantity }} {{ s.unit }}
+          </span>
+        }
+      </div>
     </div>
-  </div>
+  }
 
   <!-- Line items table -->
   <div class="card p-0 overflow-hidden mb-4">
@@ -119,35 +137,40 @@
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let p of invoice.positions ?? []; let i = index"
-            [class.anomaly-row]="p.isAnomaly">
-          <td class="text-xs" style="color:var(--surface-muted)">{{ i + 1 }}</td>
-          <td>{{ p.description }}</td>
-          <td class="text-right" style="color:var(--surface-muted)">{{ p.quantity }} {{ p.unit }}</td>
-          <td class="text-right" style="color:var(--surface-muted)">{{ p.unitPrice | currency:'EUR':'symbol':'1.2-2':'de' }}</td>
-          <td class="text-right font-semibold">{{ p.totalPrice | currency:'EUR':'symbol':'1.2-2':'de' }}</td>
-          <td>
-            <span class="inline-block text-xs px-2 py-0.5 rounded-full font-medium"
-                  [style.background]="categoryColors[p.category] ?? 'var(--surface-hover)'"
-                  style="color:var(--surface-text)">
-              {{ categoryLabels[p.category] ?? p.category }}
-            </span>
-          </td>
-          <td>
-            <span *ngIf="p.isAnomaly" class="badge-warning" [title]="p.anomalyReason">
-              ⚠️ {{ p.anomalyReason?.substring(0,28) }}…
-            </span>
-          </td>
-        </tr>
+        @for (p of invoice.positions ?? []; track p.description; let i = $index) {
+          <tr [class.anomaly-row]="p.isAnomaly">
+            <td class="text-xs" style="color:var(--surface-muted)">{{ i + 1 }}</td>
+            <td>{{ p.description }}</td>
+            <td class="text-right" style="color:var(--surface-muted)">{{ p.quantity }} {{ p.unit }}</td>
+            <td class="text-right" style="color:var(--surface-muted)">{{ p.unitPrice | currency:'EUR':'symbol':'1.2-2':'de' }}</td>
+            <td class="text-right font-semibold">{{ p.totalPrice | currency:'EUR':'symbol':'1.2-2':'de' }}</td>
+            <td>
+              <span class="inline-block text-xs px-2 py-0.5 rounded-full font-medium"
+                    [style.background]="categoryColors[p.category] ?? 'var(--surface-hover)'"
+                    style="color:var(--surface-text)">
+                {{ categoryLabels[p.category] ?? p.category }}
+              </span>
+            </td>
+            <td>
+              @if (p.isAnomaly) {
+                <span class="badge-warning" [title]="p.anomalyReason">
+                  <i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ p.anomalyReason?.substring(0,28) }}…
+                </span>
+              }
+            </td>
+          </tr>
+        }
       </tbody>
     </table>
   </div>
 
   <!-- PDF Viewer -->
-  <div *ngIf="showPdf" class="card">
-    <h2 class="section-title mb-4">Original-PDF</h2>
-    <pdf-viewer [src]="pdfUrl" [render-text]="true" [original-size]="false"
-      style="display:block;width:100%;height:800px;border-radius:0.5rem;overflow:hidden"></pdf-viewer>
-  </div>
+  @if (showPdf) {
+    <div class="card">
+      <h2 class="section-title mb-4">Original-PDF</h2>
+      <pdf-viewer [src]="pdfUrl" [render-text]="true" [original-size]="false"
+        style="display:block;width:100%;height:800px;border-radius:0.5rem;overflow:hidden"></pdf-viewer>
+    </div>
+  }
 
-</ng-container>
+}

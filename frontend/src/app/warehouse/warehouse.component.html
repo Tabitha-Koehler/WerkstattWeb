@@ -7,18 +7,22 @@
   </div>
 
   <!-- Loading -->
-  <div *ngIf="loading" class="flex justify-center py-20">
-    <div class="spinner"></div>
-  </div>
+  @if (loading) {
+    <div class="flex justify-center py-20">
+      <div class="spinner"></div>
+    </div>
+  }
 
-  <ng-container *ngIf="!loading">
+  @if (!loading) {
 
     <!-- Stats -->
     <div class="grid grid-cols-2 gap-4">
       <div class="stat-card">
         <div class="flex items-center justify-between mb-3">
           <span class="section-title">Lagerrechnungen</span>
-          <span class="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center dark:bg-violet-500/20 dark:text-violet-400">🏭</span>
+          <span class="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center dark:bg-violet-500/20 dark:text-violet-400">
+            <i class="fa-solid fa-warehouse"></i>
+          </span>
         </div>
         <div class="stat-card-value text-violet-600 dark:text-violet-400">{{ invoices.length }}</div>
         <div class="stat-card-label">Gesamt</div>
@@ -26,7 +30,9 @@
       <div class="stat-card">
         <div class="flex items-center justify-between mb-3">
           <span class="section-title">Gesamtbetrag</span>
-          <span class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center dark:bg-emerald-500/20 dark:text-emerald-400">💶</span>
+          <span class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center dark:bg-emerald-500/20 dark:text-emerald-400">
+            <i class="fa-solid fa-euro-sign"></i>
+          </span>
         </div>
         <div class="stat-card-value text-emerald-600 dark:text-emerald-400 text-2xl">
           {{ totalCost() | currency:'EUR':'symbol':'1.2-2':'de' }}
@@ -48,34 +54,40 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let inv of invoices"
-              (click)="goToDetail(inv)"
-              [class.anomaly-row]="inv.hasAnomalies">
-            <td class="whitespace-nowrap" style="color:var(--surface-muted)">
-              {{ inv.invoiceDate | date:'dd.MM.yyyy' }}
-            </td>
-            <td class="font-semibold">{{ inv.workshopName ?? '–' }}</td>
-            <td class="max-w-xs truncate" style="color:var(--surface-muted)">
-              {{ inv.repairContext ?? inv.aiSummary ?? '–' }}
-            </td>
-            <td class="text-right font-semibold whitespace-nowrap">
-              {{ inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}
-            </td>
-            <td>
-              <p-tag *ngIf="inv.hasAnomalies"    severity="warn"    value="Warnung" icon="pi pi-exclamation-triangle" />
-              <p-tag *ngIf="inv.processingError" severity="danger"  value="Fehler"  icon="pi pi-times-circle" />
-              <p-tag *ngIf="!inv.hasAnomalies && !inv.processingError" severity="success" value="OK" icon="pi pi-check" />
-            </td>
-          </tr>
+          @for (inv of invoices; track inv.id) {
+            <tr (click)="goToDetail(inv)" [class.anomaly-row]="inv.hasAnomalies">
+              <td class="whitespace-nowrap" style="color:var(--surface-muted)">
+                {{ inv.invoiceDate | date:'dd.MM.yyyy' }}
+              </td>
+              <td class="font-semibold">{{ inv.workshopName ?? '–' }}</td>
+              <td class="max-w-xs truncate" style="color:var(--surface-muted)">
+                {{ inv.repairContext ?? inv.aiSummary ?? '–' }}
+              </td>
+              <td class="text-right font-semibold whitespace-nowrap">
+                {{ inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}
+              </td>
+              <td>
+                @if (inv.hasAnomalies) {
+                  <p-tag severity="warn" value="Warnung" icon="fa-solid fa-triangle-exclamation" />
+                } @else if (inv.processingError) {
+                  <p-tag severity="danger" value="Fehler" icon="fa-solid fa-circle-xmark" />
+                } @else {
+                  <p-tag severity="success" value="OK" icon="fa-solid fa-check" />
+                }
+              </td>
+            </tr>
+          }
         </tbody>
       </table>
 
-      <div *ngIf="invoices.length === 0" class="empty-state">
-        <span class="text-5xl">🏭</span>
-        <p class="font-medium">Noch keine Lagerrechnungen</p>
-        <p class="text-sm">Rechnungen ohne Kennzeichen landen automatisch hier.</p>
-      </div>
+      @if (invoices.length === 0) {
+        <div class="empty-state">
+          <i class="fa-solid fa-warehouse text-5xl" style="color:var(--surface-muted)"></i>
+          <p class="font-medium">Noch keine Lagerrechnungen</p>
+          <p class="text-sm">Rechnungen ohne Kennzeichen landen automatisch hier.</p>
+        </div>
+      }
     </div>
 
-  </ng-container>
+  }
 </div>

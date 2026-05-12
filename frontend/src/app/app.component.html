@@ -7,7 +7,7 @@
     <!-- Logo -->
     <div class="flex items-center gap-3 px-5 py-5 border-b" style="border-color:var(--surface-sidebar-border)">
       <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-md shrink-0">
-        <span class="text-white text-base">🚛</span>
+        <i class="fa-solid fa-truck text-white text-sm"></i>
       </div>
       <div class="min-w-0">
         <div class="font-bold text-sm leading-tight" style="color:var(--surface-text)">WerkstattWeb</div>
@@ -17,25 +17,27 @@
 
     <!-- Navigation -->
     <nav class="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto">
-      <a *ngFor="let item of navItems"
-         [routerLink]="item.path"
-         routerLinkActive="nav-active"
-         class="nav-item">
-        <span class="text-base leading-none">{{ item.icon }}</span>
-        <span class="text-sm font-medium">{{ item.label }}</span>
-      </a>
+      @for (item of navItems; track item.path) {
+        <a [routerLink]="item.path"
+           routerLinkActive="nav-active"
+           class="nav-item">
+          <i class="fa-solid {{ item.icon }} w-4 text-center text-sm shrink-0"></i>
+          <span class="text-sm font-medium">{{ item.label }}</span>
+        </a>
+      }
     </nav>
 
-    <!-- Bottom: Theme toggle + Upload -->
+    <!-- Bottom -->
     <div class="p-3 border-t space-y-2" style="border-color:var(--surface-sidebar-border)">
-      <!-- Theme Toggle -->
+
+      <!-- Theme toggle -->
       <button class="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors"
-              style="color:var(--surface-muted)"
-              [style.background]="'transparent'"
+              style="color:var(--surface-muted); background:transparent; border:0; cursor:pointer;"
               (click)="theme.toggle()"
               [title]="theme.isDark() ? 'Light Mode aktivieren' : 'Dark Mode aktivieren'">
-        <span class="text-base">{{ theme.isDark() ? '☀️' : '🌙' }}</span>
-        <span class="font-medium">{{ theme.isDark() ? 'Light Mode' : 'Dark Mode' }}</span>
+        <i class="fa-solid text-base w-5 text-center"
+           [class]="theme.isDark() ? 'fa-sun' : 'fa-moon'"></i>
+        <span class="font-medium text-sm">{{ theme.isDark() ? 'Light Mode' : 'Dark Mode' }}</span>
         <div class="ml-auto w-9 h-5 rounded-full transition-colors relative"
              [style.background]="theme.isDark() ? '#3b82f6' : '#cbd5e1'">
           <div class="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"
@@ -47,8 +49,9 @@
       <a routerLink="/upload"
          class="flex items-center justify-center gap-2 w-full px-3 py-2.5 text-sm font-semibold
                 bg-blue-600 text-white rounded-xl hover:bg-blue-700 active:bg-blue-800
-                transition-colors shadow-sm">
-        <span>⬆️</span> Rechnung hochladen
+                transition-colors shadow-sm no-underline">
+        <i class="fa-solid fa-cloud-arrow-up"></i>
+        <span>Rechnung hochladen</span>
       </a>
     </div>
   </aside>
@@ -59,13 +62,14 @@
     <!-- Topbar -->
     <header class="flex items-center justify-between px-6 py-3.5 border-b shrink-0 transition-colors duration-200"
             style="background:var(--surface-card); border-color:var(--surface-border)">
-      <span class="text-sm" style="color:var(--surface-muted)">
-        Spedition Rechnungsverwaltung
-      </span>
+      <div class="flex items-center gap-2" style="color:var(--surface-muted)">
+        <i class="fa-solid fa-truck-moving text-sm"></i>
+        <span class="text-sm">Spedition Rechnungsverwaltung</span>
+      </div>
       <div class="flex items-center gap-3">
-        <p-toast></p-toast>
-        <p-confirmDialog></p-confirmDialog>
-        <span class="text-xs px-2 py-1 rounded-full font-medium"
+        <p-toast />
+        <p-confirmDialog />
+        <span class="text-xs px-2.5 py-1 rounded-full font-semibold"
               style="background:var(--surface-hover); color:var(--surface-muted)">
           v2.0
         </span>

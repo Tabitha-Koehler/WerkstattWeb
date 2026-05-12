@@ -5,16 +5,23 @@ import { Inspection } from '../../core/models/models';
   standalone: false,
   selector: 'app-inspection-status',
   template: `
-    <div *ngIf="inspection; else noData">
-      <span [class]="statusClass">{{ statusIcon }} {{ inspection.type }}</span>
-      <div class="text-xs text-gray-500 mt-0.5">
-        <span *ngIf="inspection.inspectionDate">Datum: {{ inspection.inspectionDate | date:'dd.MM.yyyy' }}</span>
-        <span *ngIf="inspection.nextDueDate"> · Fällig: <strong [class]="statusClass">{{ inspection.nextDueDate | date:'dd.MM.yyyy' }}</strong></span>
+    @if (inspection) {
+      <div>
+        <span [class]="statusClass">
+          <i class="fa-solid {{ statusIcon }} mr-1"></i>{{ inspection.type }}
+        </span>
+        <div class="text-xs text-gray-500 mt-0.5">
+          @if (inspection.inspectionDate) {
+            <span>Datum: {{ inspection.inspectionDate | date:'dd.MM.yyyy' }}</span>
+          }
+          @if (inspection.nextDueDate) {
+            <span> · Fällig: <strong [class]="statusClass">{{ inspection.nextDueDate | date:'dd.MM.yyyy' }}</strong></span>
+          }
+        </div>
       </div>
-    </div>
-    <ng-template #noData>
+    } @else {
       <span class="status-unknown">{{ type }} – Kein Eintrag</span>
-    </ng-template>
+    }
   `,
 })
 export class InspectionStatusComponent {
@@ -38,9 +45,9 @@ export class InspectionStatusComponent {
 
   get statusIcon(): string {
     const days = this.daysUntilDue;
-    if (days === null) return '❓';
-    if (days < 0)   return '🔴';
-    if (days <= 30) return '🟠';
-    return '🟢';
+    if (days === null) return 'fa-question';
+    if (days < 0)   return 'fa-circle-xmark';
+    if (days <= 30) return 'fa-circle-exclamation';
+    return 'fa-circle-check';
   }
 }

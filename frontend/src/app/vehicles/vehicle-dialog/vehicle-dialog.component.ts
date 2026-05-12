@@ -18,7 +18,7 @@ import { Vehicle } from '../../core/models/models';
           <h2 class="font-semibold text-base" style="color:var(--surface-text)">
             {{ vehicle ? 'Fahrzeug bearbeiten' : 'Neues Fahrzeug' }}
           </h2>
-          <p-button icon="pi pi-times" [text]="true" [rounded]="true" severity="secondary" size="small" (click)="cancel.emit()" />
+          <p-button icon="fa-solid fa-xmark" [text]="true" [rounded]="true" severity="secondary" size="small" (click)="cancel.emit()" />
         </div>
 
         <form [formGroup]="form" class="px-6 py-5 space-y-4">
@@ -56,7 +56,7 @@ import { Vehicle } from '../../core/models/models';
 
         <div class="flex justify-end gap-3 px-6 py-4 border-t" style="border-color:var(--surface-border)">
           <p-button label="Abbrechen" severity="secondary" [outlined]="true" (click)="cancel.emit()" />
-          <p-button label="Speichern" icon="pi pi-check" [disabled]="form.invalid" (click)="save()" />
+          <p-button label="Speichern" icon="fa-solid fa-check" [disabled]="form.invalid" (click)="save()" />
         </div>
       </div>
     </div>

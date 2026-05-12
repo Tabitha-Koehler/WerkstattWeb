@@ -6,7 +6,7 @@
   </div>
 
   <div class="banner-info">
-    <span class="text-lg shrink-0">ℹ️</span>
+    <i class="fa-solid fa-circle-info text-lg shrink-0"></i>
     <div>
       <strong>Automatische Erkennung aktiv:</strong> Neue PDFs im Ordner
       <code class="font-mono text-xs px-1.5 py-0.5 rounded ml-1" style="background:var(--surface-border)">rechnungen_pdf</code>
@@ -19,55 +19,74 @@
        [style.border-color]="dragOver ? '#3b82f6' : 'var(--surface-border)'"
        [style.background]="dragOver ? 'rgb(59 130 246 / 0.06)' : 'transparent'"
        (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)" (click)="fileInput.click()">
-    <div class="text-5xl mb-3">{{ dragOver ? '📂' : '📄' }}</div>
+    <i class="fa-solid text-5xl mb-3 block" [class]="dragOver ? 'fa-folder-open text-blue-500' : 'fa-file-pdf'" style="color:var(--surface-muted)"></i>
     <p class="font-semibold" style="color:var(--surface-text)">PDF-Dateien hier ablegen oder klicken</p>
     <p class="text-sm mt-1" style="color:var(--surface-muted)">PDF/A · Mehrere Dateien gleichzeitig möglich</p>
     <input #fileInput type="file" accept=".pdf" multiple hidden (change)="onFileSelect($event)">
   </div>
 
   <!-- Queue -->
-  <div *ngIf="queue.length > 0" class="card">
-    <div class="flex items-center gap-3 mb-5">
-      <h2 class="font-semibold" style="color:var(--surface-text)">Warteschlange ({{ queue.length }})</h2>
-      <p-tag *ngIf="doneCount() > 0"  severity="success" [value]="doneCount() + ' fertig'" />
-      <p-tag *ngIf="errorCount() > 0" severity="danger"  [value]="errorCount() + ' Fehler'" />
-    </div>
+  @if (queue.length > 0) {
+    <div class="card">
+      <div class="flex items-center gap-3 mb-5">
+        <h2 class="font-semibold" style="color:var(--surface-text)">Warteschlange ({{ queue.length }})</h2>
+        @if (doneCount() > 0) {
+          <p-tag severity="success" [value]="doneCount() + ' fertig'" />
+        }
+        @if (errorCount() > 0) {
+          <p-tag severity="danger" [value]="errorCount() + ' Fehler'" />
+        }
+      </div>
 
-    <div class="space-y-2 mb-5">
-      <div *ngFor="let item of queue; let i = index"
-           class="flex items-center gap-3 p-3 rounded-xl border"
-           style="border-color:var(--surface-border); background:var(--surface-hover)">
-        <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
-             [class]="statusIconClass(item.status, item.result?.hasAnomalies)">
-          <i class="text-sm" [class]="statusPiIcon(item.status, item.result?.hasAnomalies)"></i>
-        </div>
-        <div class="flex-1 min-w-0">
-          <div class="font-medium text-sm truncate" style="color:var(--surface-text)">{{ item.file.name }}</div>
-          <div *ngIf="item.status === 'pending'" class="text-xs mt-0.5" style="color:var(--surface-muted)">Wartet auf Upload</div>
-          <div *ngIf="item.status === 'uploading'" class="mt-1">
-            <p-progressBar mode="indeterminate" [style]="{'height':'3px','border-radius':'2px'}" />
-            <span class="text-xs text-blue-500 mt-1 block">KI analysiert...</span>
+      <div class="space-y-2 mb-5">
+        @for (item of queue; track item.file.name; let i = $index) {
+          <div class="flex items-center gap-3 p-3 rounded-xl border"
+               style="border-color:var(--surface-border); background:var(--surface-hover)">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
+                 [class]="statusIconClass(item.status, item.result?.hasAnomalies)">
+              <i class="text-sm fa-solid" [class]="statusFaIcon(item.status, item.result?.hasAnomalies)"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-sm truncate" style="color:var(--surface-text)">{{ item.file.name }}</div>
+              @if (item.status === 'pending') {
+                <div class="text-xs mt-0.5" style="color:var(--surface-muted)">Wartet auf Upload</div>
+              }
+              @if (item.status === 'uploading') {
+                <div class="mt-1">
+                  <p-progressBar mode="indeterminate" [style]="{'height':'3px','border-radius':'2px'}" />
+                  <span class="text-xs text-blue-500 mt-1 block">KI analysiert...</span>
+                </div>
+              }
+              @if (item.status === 'done' && item.result) {
+                <div class="text-xs mt-0.5 cursor-pointer text-blue-600 dark:text-blue-400 hover:underline"
+                     (click)="goToResult(item)">
+                  <i class="fa-solid fa-check mr-1"></i>
+                  {{ item.result!.vehicle?.licensePlate ?? 'Lager' }} – {{ item.result!.workshopName }} –
+                  {{ item.result!.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}
+                  @if (item.result!.hasAnomalies) {
+                    <p-tag severity="warn" value="Warnung" styleClass="ml-1" />
+                  }
+                  <span class="ml-1 opacity-60">→ anzeigen</span>
+                </div>
+              }
+              @if (item.status === 'error') {
+                <div class="text-xs mt-0.5 text-red-500">Fehler: {{ item.error }}</div>
+              }
+            </div>
+            @if (item.status === 'pending') {
+              <p-button icon="fa-solid fa-xmark" [text]="true" [rounded]="true"
+                        severity="secondary" size="small" (click)="removeItem(i)" />
+            }
           </div>
-          <div *ngIf="item.status === 'done' && item.result"
-               class="text-xs mt-0.5 cursor-pointer text-blue-600 dark:text-blue-400 hover:underline"
-               (click)="goToResult(item)">
-            ✓ {{ item.result!.vehicle?.licensePlate ?? 'Lager' }} – {{ item.result!.workshopName }} –
-            {{ item.result!.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}
-            <p-tag *ngIf="item.result!.hasAnomalies" severity="warn" value="Warnung" styleClass="ml-1" />
-            <span class="ml-1 opacity-60">→ anzeigen</span>
-          </div>
-          <div *ngIf="item.status === 'error'" class="text-xs mt-0.5 text-red-500">Fehler: {{ item.error }}</div>
-        </div>
-        <p-button *ngIf="item.status === 'pending'" icon="pi pi-times" [text]="true" [rounded]="true"
-                  severity="secondary" size="small" (click)="removeItem(i)" />
+        }
+      </div>
+
+      <div class="flex gap-2 pt-4 border-t" style="border-color:var(--surface-border)">
+        <p-button [label]="uploading ? 'Wird verarbeitet...' : pendingCount() + ' Rechnung(en) hochladen'"
+                  [icon]="uploading ? 'fa-solid fa-spinner fa-spin' : 'fa-solid fa-cloud-arrow-up'"
+                  [disabled]="uploading || pendingCount() === 0" (click)="uploadAll()" />
+        <p-button label="Leeren" severity="secondary" [outlined]="true" [disabled]="uploading" (click)="queue = []" />
       </div>
     </div>
-
-    <div class="flex gap-2 pt-4 border-t" style="border-color:var(--surface-border)">
-      <p-button [label]="uploading ? 'Wird verarbeitet...' : pendingCount() + ' Rechnung(en) hochladen'"
-                [icon]="uploading ? 'pi pi-spin pi-spinner' : 'pi pi-cloud-upload'"
-                [disabled]="uploading || pendingCount() === 0" (click)="uploadAll()" />
-      <p-button label="Leeren" severity="secondary" [outlined]="true" [disabled]="uploading" (click)="queue = []" />
-    </div>
-  </div>
+  }
 </div>
