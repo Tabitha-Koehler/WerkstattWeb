@@ -1,7 +1,7 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { provideHttpClient, withFetch } from '@angular/common/http';
+import { provideHttpClient } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { providePrimeNG } from 'primeng/config';
@@ -76,7 +76,7 @@ import { InspectionStatusComponent } from './shared/inspection-status/inspection
     InputIconModule,
   ],
   providers: [
-    provideHttpClient(withFetch()),
+    provideHttpClient(),
     providePrimeNG({
       theme: {
         preset: Aura,
