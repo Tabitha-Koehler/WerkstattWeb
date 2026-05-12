@@ -6,7 +6,7 @@ import { Inspection } from '../../core/models/models';
   template: `
     <div *ngIf="inspection; else noData">
       <span [class]="statusClass">{{ statusIcon }} {{ inspection.type }}</span>
-      <div style="font-size:12px; color:#616161; margin-top:2px;">
+      <div class="text-xs text-gray-500 mt-0.5">
         <span *ngIf="inspection.inspectionDate">Datum: {{ inspection.inspectionDate | date:'dd.MM.yyyy' }}</span>
         <span *ngIf="inspection.nextDueDate"> · Fällig: <strong [class]="statusClass">{{ inspection.nextDueDate | date:'dd.MM.yyyy' }}</strong></span>
       </div>
@@ -30,7 +30,7 @@ export class InspectionStatusComponent {
   get statusClass(): string {
     const days = this.daysUntilDue;
     if (days === null) return 'status-unknown';
-    if (days < 0)  return 'status-overdue';
+    if (days < 0)   return 'status-overdue';
     if (days <= 30) return 'status-soon';
     return 'status-ok';
   }
@@ -38,7 +38,7 @@ export class InspectionStatusComponent {
   get statusIcon(): string {
     const days = this.daysUntilDue;
     if (days === null) return '❓';
-    if (days < 0)  return '🔴';
+    if (days < 0)   return '🔴';
     if (days <= 30) return '🟠';
     return '🟢';
   }

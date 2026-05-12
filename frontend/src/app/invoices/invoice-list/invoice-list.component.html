@@ -1,80 +1,44 @@
-<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
-  <h2 style="margin:0;color:#1565c0;">Rechnungen</h2>
-  <div style="display:flex;gap:8px;align-items:center;">
-    <mat-form-field appearance="outline" style="margin-bottom:-1.25em;width:280px;">
-      <mat-label>Suche</mat-label>
-      <input matInput [(ngModel)]="filter" (ngModelChange)="applyFilter()" placeholder="Kennzeichen, Werkstatt...">
-      <mat-icon matSuffix>search</mat-icon>
-    </mat-form-field>
-    <button mat-stroked-button [color]="showOnlyAnomalies ? 'warn' : ''" (click)="toggleAnomalies()">
-      <mat-icon>warning</mat-icon>
-      {{ showOnlyAnomalies ? 'Alle anzeigen' : 'Nur Warnungen' }}
-    </button>
-    <button mat-raised-button color="primary" routerLink="/upload">
-      <mat-icon>upload_file</mat-icon> Hochladen
-    </button>
-  </div>
-</div>
-
-<div *ngIf="loading" style="text-align:center;padding:60px;">
-  <mat-spinner diameter="48" style="margin:auto;"></mat-spinner>
-</div>
-
-<mat-card *ngIf="!loading" style="padding:0;">
-  <table mat-table [dataSource]="dataSource" matSort style="width:100%;">
-
-    <ng-container matColumnDef="invoiceDate">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Datum</th>
-      <td mat-cell *matCellDef="let inv">{{ inv.invoiceDate | date:'dd.MM.yyyy' }}</td>
-    </ng-container>
-
-    <ng-container matColumnDef="licensePlate">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Kennzeichen</th>
-      <td mat-cell *matCellDef="let inv">
-        <strong>{{ inv.vehicle?.licensePlate ?? '–' }}</strong>
-      </td>
-    </ng-container>
-
-    <ng-container matColumnDef="workshopName">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header>Werkstatt</th>
-      <td mat-cell *matCellDef="let inv">{{ inv.workshopName ?? '–' }}</td>
-    </ng-container>
-
-    <ng-container matColumnDef="repairContext">
-      <th mat-header-cell *matHeaderCellDef>Reparatur</th>
-      <td mat-cell *matCellDef="let inv" style="max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-        {{ inv.repairContext ?? '–' }}
-      </td>
-    </ng-container>
-
-    <ng-container matColumnDef="totalAmount">
-      <th mat-header-cell *matHeaderCellDef mat-sort-header style="text-align:right;">Betrag</th>
-      <td mat-cell *matCellDef="let inv" style="text-align:right;">
-        {{ inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}
-      </td>
-    </ng-container>
-
-    <ng-container matColumnDef="status">
-      <th mat-header-cell *matHeaderCellDef>Status</th>
-      <td mat-cell *matCellDef="let inv">
-        <mat-chip *ngIf="inv.hasAnomalies" class="anomaly-chip" style="font-size:11px;">
-          <mat-icon style="font-size:14px;width:14px;height:14px;">warning</mat-icon>&nbsp;Warnung
-        </mat-chip>
-        <mat-chip *ngIf="inv.processingError" color="warn" style="font-size:11px;">Fehler</mat-chip>
-        <mat-chip *ngIf="!inv.hasAnomalies && !inv.processingError" style="background:#e8f5e9;font-size:11px;">✓ OK</mat-chip>
-      </td>
-    </ng-container>
-
-    <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-    <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-        [class.anomaly-row]="row.hasAnomalies"
-        class="clickable-row" (click)="goToDetail(row)"></tr>
-  </table>
-
-  <div *ngIf="dataSource.data.length === 0" style="padding:40px;text-align:center;color:#9e9e9e;">
-    <mat-icon style="font-size:48px;width:48px;height:48px;">receipt_long</mat-icon>
-    <p>Noch keine Rechnungen vorhanden. Lade Rechnungen hoch oder lege Dateien in den Überwachungsordner.</p>
+<div class="space-y-4">
+  <div class="flex flex-wrap items-center gap-3 justify-between">
+    <h1 class="text-2xl font-bold text-gray-900">Rechnungen</h1>
+    <div class="flex items-center gap-2">
+      <input class="form-input w-64" [(ngModel)]="filter" (ngModelChange)="applyFilter()"
+             placeholder="🔍 Kennzeichen, Werkstatt...">
+      <button class="btn-secondary" [class.bg-orange-100]="showOnlyAnomalies" (click)="toggleAnomalies()">
+        ⚠️ {{ showOnlyAnomalies ? 'Alle' : 'Nur Warnungen' }}
+      </button>
+      <a routerLink="/upload" class="btn-primary">⬆️ Hochladen</a>
+    </div>
   </div>
 
-  <mat-paginator [pageSizeOptions]="[25, 50, 100]" showFirstLastButtons></mat-paginator>
-</mat-card>
+  <div *ngIf="loading" class="flex justify-center py-20">
+    <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+  </div>
+
+  <div *ngIf="!loading" class="card p-0 overflow-hidden">
+    <table class="table-auto w-full">
+      <thead><tr>
+        <th>Datum</th><th>Kennzeichen</th><th>Werkstatt</th><th>Reparatur</th>
+        <th class="text-right">Betrag</th><th>Status</th>
+      </tr></thead>
+      <tbody>
+        <tr *ngFor="let inv of filteredInvoices" (click)="goToDetail(inv)" [class.anomaly-row]="inv.hasAnomalies">
+          <td class="text-sm whitespace-nowrap">{{ inv.invoiceDate | date:'dd.MM.yyyy' }}</td>
+          <td><span class="font-bold text-blue-700">{{ inv.vehicle?.licensePlate ?? '–' }}</span></td>
+          <td class="text-sm">{{ inv.workshopName ?? '–' }}</td>
+          <td class="text-sm max-w-xs truncate">{{ inv.repairContext ?? '–' }}</td>
+          <td class="text-sm text-right font-medium whitespace-nowrap">{{ inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}</td>
+          <td>
+            <span *ngIf="inv.hasAnomalies"  class="badge-warning">⚠️ Warnung</span>
+            <span *ngIf="inv.processingError" class="badge-error">Fehler</span>
+            <span *ngIf="!inv.hasAnomalies && !inv.processingError" class="badge-ok">✓ OK</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div *ngIf="filteredInvoices.length === 0" class="py-16 text-center text-gray-400">
+      <div class="text-4xl mb-3">🧾</div>
+      <p>Keine Rechnungen gefunden.</p>
+    </div>
+  </div>
+</div>

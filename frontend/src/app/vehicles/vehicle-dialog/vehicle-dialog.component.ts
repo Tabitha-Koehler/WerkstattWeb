@@ -1,71 +1,84 @@
-import { Component, Inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { Vehicle } from '../../core/models/models';
 
 @Component({
   selector: 'app-vehicle-dialog',
   template: `
-    <h2 mat-dialog-title>{{ data ? 'Fahrzeug bearbeiten' : 'Neues Fahrzeug' }}</h2>
-    <mat-dialog-content [formGroup]="form" style="display:flex; flex-direction:column; gap:8px; min-width:400px;">
-      <mat-form-field appearance="outline">
-        <mat-label>Kennzeichen *</mat-label>
-        <input matInput formControlName="licensePlate" placeholder="HH-AB-1234">
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Fahrzeugtyp</mat-label>
-        <mat-select formControlName="vehicleType">
-          <mat-option value="LKW">LKW</mat-option>
-          <mat-option value="Sattelzugmaschine">Sattelzugmaschine</mat-option>
-          <mat-option value="Anhänger">Anhänger</mat-option>
-          <mat-option value="Auflieger">Auflieger</mat-option>
-          <mat-option value="PKW">PKW</mat-option>
-          <mat-option value="Transporter">Transporter</mat-option>
-          <mat-option value="Sonstig">Sonstig</mat-option>
-        </mat-select>
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Hersteller</mat-label>
-        <input matInput formControlName="manufacturer" placeholder="z.B. MAN, Mercedes, DAF">
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Modell</mat-label>
-        <input matInput formControlName="model" placeholder="z.B. TGX 18.500">
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Baujahr</mat-label>
-        <input matInput formControlName="year" type="number" placeholder="2019">
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Notizen</mat-label>
-        <textarea matInput formControlName="notes" rows="2"></textarea>
-      </mat-form-field>
-    </mat-dialog-content>
-    <mat-dialog-actions align="end">
-      <button mat-button mat-dialog-close>Abbrechen</button>
-      <button mat-raised-button color="primary" [disabled]="form.invalid" (click)="save()">Speichern</button>
-    </mat-dialog-actions>
+    <!-- Backdrop -->
+    <div class="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4" (click)="onBackdrop($event)">
+      <div class="bg-white rounded-2xl shadow-xl w-full max-w-md" (click)="$event.stopPropagation()">
+        <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <h2 class="text-lg font-semibold text-gray-900">{{ vehicle ? 'Fahrzeug bearbeiten' : 'Neues Fahrzeug' }}</h2>
+          <button class="btn-icon" (click)="cancel.emit()">✕</button>
+        </div>
+
+        <form [formGroup]="form" class="p-6 space-y-4">
+          <div>
+            <label class="form-label">Kennzeichen *</label>
+            <input class="form-input" formControlName="licensePlate" placeholder="HH-AB-1234">
+          </div>
+          <div>
+            <label class="form-label">Fahrzeugtyp</label>
+            <select class="form-select" formControlName="vehicleType">
+              <option value="">– Auswählen –</option>
+              <option>LKW</option>
+              <option>Sattelzugmaschine</option>
+              <option>Anhänger</option>
+              <option>Auflieger</option>
+              <option>PKW</option>
+              <option>Transporter</option>
+              <option>Sonstig</option>
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="form-label">Hersteller</label>
+              <input class="form-input" formControlName="manufacturer" placeholder="z.B. MAN">
+            </div>
+            <div>
+              <label class="form-label">Modell</label>
+              <input class="form-input" formControlName="model" placeholder="z.B. TGX 18.500">
+            </div>
+          </div>
+          <div>
+            <label class="form-label">Baujahr</label>
+            <input class="form-input" formControlName="year" type="number" placeholder="2019">
+          </div>
+          <div>
+            <label class="form-label">Notizen</label>
+            <textarea class="form-input" formControlName="notes" rows="2"></textarea>
+          </div>
+        </form>
+
+        <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
+          <button class="btn-secondary" (click)="cancel.emit()">Abbrechen</button>
+          <button class="btn-primary" [disabled]="form.invalid" (click)="save()">Speichern</button>
+        </div>
+      </div>
+    </div>
   `,
 })
-export class VehicleDialogComponent {
-  form: FormGroup;
+export class VehicleDialogComponent implements OnInit {
+  @Input() vehicle: Vehicle | null = null;
+  @Output() saved = new EventEmitter<Partial<Vehicle>>();
+  @Output() cancel = new EventEmitter<void>();
 
-  constructor(
-    private fb: FormBuilder,
-    private dialogRef: MatDialogRef<VehicleDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: Vehicle | null,
-  ) {
+  form!: FormGroup;
+
+  constructor(private fb: FormBuilder) {}
+
+  ngOnInit() {
     this.form = this.fb.group({
-      licensePlate: [data?.licensePlate ?? '', Validators.required],
-      vehicleType:  [data?.vehicleType  ?? ''],
-      manufacturer: [data?.manufacturer ?? ''],
-      model:        [data?.model        ?? ''],
-      year:         [data?.year         ?? null],
-      notes:        [data?.notes        ?? ''],
+      licensePlate: [this.vehicle?.licensePlate ?? '', Validators.required],
+      vehicleType:  [this.vehicle?.vehicleType  ?? ''],
+      manufacturer: [this.vehicle?.manufacturer ?? ''],
+      model:        [this.vehicle?.model        ?? ''],
+      year:         [this.vehicle?.year         ?? null],
+      notes:        [this.vehicle?.notes        ?? ''],
     });
   }
 
-  save(): void {
-    if (this.form.valid) this.dialogRef.close(this.form.value);
-  }
+  save() { if (this.form.valid) this.saved.emit(this.form.value); }
+  onBackdrop(e: Event) { this.cancel.emit(); }
 }

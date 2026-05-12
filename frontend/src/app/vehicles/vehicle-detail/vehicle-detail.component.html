@@ -1,128 +1,90 @@
-<div *ngIf="loading" style="text-align:center;padding:60px;">
-  <mat-spinner diameter="48" style="margin:auto;"></mat-spinner>
+<div *ngIf="loading" class="flex justify-center py-20">
+  <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
 </div>
 
 <ng-container *ngIf="!loading && vehicle">
-
   <!-- Kopfzeile -->
-  <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
-    <button mat-icon-button routerLink="/vehicles" matTooltip="Zurück">
-      <mat-icon>arrow_back</mat-icon>
-    </button>
-    <mat-icon style="font-size:32px;width:32px;height:32px;color:#1565c0;">local_shipping</mat-icon>
+  <div class="flex items-center gap-3 mb-6">
+    <a routerLink="/vehicles" class="btn-icon">←</a>
+    <span class="text-3xl">🚛</span>
     <div>
-      <h2 style="margin:0;color:#1565c0;">{{ vehicle.licensePlate }}</h2>
-      <span style="color:#616161;">{{ vehicle.vehicleType }} {{ vehicle.manufacturer }} {{ vehicle.model }} {{ vehicle.year }}</span>
+      <h1 class="text-2xl font-bold text-blue-700">{{ vehicle.licensePlate }}</h1>
+      <p class="text-sm text-gray-500">{{ vehicle.vehicleType }} {{ vehicle.manufacturer }} {{ vehicle.model }} {{ vehicle.year }}</p>
     </div>
-    <span style="flex:1;"></span>
-    <button mat-stroked-button routerLink="/upload">
-      <mat-icon>upload_file</mat-icon> Rechnung hochladen
-    </button>
+    <div class="flex-1"></div>
+    <a routerLink="/upload" class="btn-secondary">⬆️ Rechnung hochladen</a>
   </div>
 
-  <!-- Statistik-Leiste -->
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;">
-    <mat-card style="text-align:center;padding:16px;">
-      <div style="font-size:26px;font-weight:700;color:#1565c0;">{{ invoices.length }}</div>
-      <div style="color:#616161;font-size:13px;">Rechnungen</div>
-    </mat-card>
-    <mat-card style="text-align:center;padding:16px;">
-      <div style="font-size:26px;font-weight:700;color:#2e7d32;">{{ totalCost() | currency:'EUR':'symbol':'1.2-2':'de' }}</div>
-      <div style="color:#616161;font-size:13px;">Gesamtkosten</div>
-    </mat-card>
-    <mat-card style="text-align:center;padding:16px;" [style.borderLeft]="anomalyCount() > 0 ? '4px solid #ff6f00' : ''">
-      <div style="font-size:26px;font-weight:700;" [style.color]="anomalyCount() > 0 ? '#ff6f00' : '#2e7d32'">{{ anomalyCount() }}</div>
-      <div style="color:#616161;font-size:13px;">Warnungen</div>
-    </mat-card>
+  <!-- Statistik -->
+  <div class="grid grid-cols-3 gap-4 mb-6">
+    <div class="card text-center">
+      <div class="text-3xl font-bold text-blue-700">{{ invoices.length }}</div>
+      <div class="text-sm text-gray-500">Rechnungen</div>
+    </div>
+    <div class="card text-center">
+      <div class="text-3xl font-bold text-green-700">{{ totalCost() | currency:'EUR':'symbol':'1.2-2':'de' }}</div>
+      <div class="text-sm text-gray-500">Gesamtkosten</div>
+    </div>
+    <div class="card text-center" [class.border-l-4]="anomalyCount()>0" [class.border-orange-400]="anomalyCount()>0">
+      <div class="text-3xl font-bold" [class.text-orange-600]="anomalyCount()>0" [class.text-gray-400]="anomalyCount()===0">{{ anomalyCount() }}</div>
+      <div class="text-sm text-gray-500">Warnungen</div>
+    </div>
   </div>
 
-  <!-- SP / HU / AU Status -->
-  <mat-card class="detail-card">
-    <mat-card-header>
-      <mat-icon mat-card-avatar>fact_check</mat-icon>
-      <mat-card-title>Prüfungsstatus</mat-card-title>
-    </mat-card-header>
-    <mat-card-content>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px;">
-
-        <div *ngFor="let type of ['SP','HU','AU']" style="border:1px solid #e0e0e0;border-radius:8px;padding:16px;text-align:center;">
-          <span class="badge-{{type}}" style="font-size:16px;padding:4px 14px;">{{ type }}</span>
-          <ng-container *ngIf="latestInspections[type]; else noInspection">
-            <div style="margin-top:10px;font-size:13px;color:#424242;">
-              <div>Datum: <strong>{{ latestInspections[type]!.inspectionDate | date:'dd.MM.yyyy' }}</strong></div>
-              <div *ngIf="latestInspections[type]!.nextDueDate">
-                Nächste Fälligkeit:<br>
-                <strong [class]="inspectionStatusClass(latestInspections[type]!.nextDueDate!)">
-                  {{ latestInspections[type]!.nextDueDate | date:'dd.MM.yyyy' }}
-                </strong><br>
-                <span [class]="inspectionStatusClass(latestInspections[type]!.nextDueDate!)">
-                  {{ inspectionStatusText(latestInspections[type]!.nextDueDate!) }}
-                </span>
-              </div>
-              <div *ngIf="!latestInspections[type]!.nextDueDate" class="status-unknown">Kein Fälligkeitsdatum</div>
+  <!-- SP / HU / AU -->
+  <div class="card mb-6">
+    <h2 class="font-semibold text-gray-800 mb-4">📋 Prüfungsstatus</h2>
+    <div class="grid grid-cols-3 gap-4">
+      <div *ngFor="let type of ['SP','HU','AU']"
+           class="border border-gray-200 rounded-xl p-4 text-center">
+        <span class="badge-{{ type.toLowerCase() }} text-base px-4 py-1">{{ type }}</span>
+        <ng-container *ngIf="latestInspections[type]; else noInsp">
+          <div class="mt-3 text-sm text-gray-600 space-y-1">
+            <div>Datum: <strong>{{ latestInspections[type]!.inspectionDate | date:'dd.MM.yyyy' }}</strong></div>
+            <div *ngIf="latestInspections[type]!.nextDueDate">
+              Fällig:<br>
+              <strong [class]="inspectionStatusClass(latestInspections[type]!.nextDueDate!)">
+                {{ latestInspections[type]!.nextDueDate | date:'dd.MM.yyyy' }}
+              </strong><br>
+              <span class="text-xs" [class]="inspectionStatusClass(latestInspections[type]!.nextDueDate!)">
+                {{ inspectionStatusText(latestInspections[type]!.nextDueDate!) }}
+              </span>
             </div>
-          </ng-container>
-          <ng-template #noInspection>
-            <div style="margin-top:10px;font-size:13px;" class="status-unknown">Kein Eintrag vorhanden</div>
-          </ng-template>
-        </div>
-
+            <div *ngIf="!latestInspections[type]!.nextDueDate" class="status-unknown text-xs">Kein Fälligkeitsdatum</div>
+          </div>
+        </ng-container>
+        <ng-template #noInsp>
+          <div class="mt-3 text-xs status-unknown">Kein Eintrag vorhanden</div>
+        </ng-template>
       </div>
-    </mat-card-content>
-  </mat-card>
+    </div>
+  </div>
 
   <!-- Rechnungsliste -->
-  <mat-card class="detail-card">
-    <mat-card-header>
-      <mat-icon mat-card-avatar>receipt_long</mat-icon>
-      <mat-card-title>Rechnungen ({{ invoices.length }})</mat-card-title>
-    </mat-card-header>
-    <mat-card-content style="padding:0;">
-      <table mat-table [dataSource]="invoices" style="width:100%;">
-
-        <ng-container matColumnDef="invoiceDate">
-          <th mat-header-cell *matHeaderCellDef>Datum</th>
-          <td mat-cell *matCellDef="let inv">{{ inv.invoiceDate | date:'dd.MM.yyyy' }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="workshopName">
-          <th mat-header-cell *matHeaderCellDef>Werkstatt</th>
-          <td mat-cell *matCellDef="let inv">{{ inv.workshopName ?? '–' }}</td>
-        </ng-container>
-
-        <ng-container matColumnDef="repairContext">
-          <th mat-header-cell *matHeaderCellDef>Reparatur</th>
-          <td mat-cell *matCellDef="let inv" style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-            {{ inv.repairContext ?? '–' }}
+  <div class="card p-0 overflow-hidden">
+    <div class="px-5 py-4 border-b border-gray-200">
+      <h2 class="font-semibold text-gray-800">🧾 Rechnungen ({{ invoices.length }})</h2>
+    </div>
+    <table class="table-auto w-full">
+      <thead><tr>
+        <th>Datum</th><th>Werkstatt</th><th>Reparatur</th><th class="text-right">Betrag</th><th>Status</th>
+      </tr></thead>
+      <tbody>
+        <tr *ngFor="let inv of invoices" (click)="goToInvoice(inv)" [class.anomaly-row]="inv.hasAnomalies">
+          <td class="text-sm">{{ inv.invoiceDate | date:'dd.MM.yyyy' }}</td>
+          <td class="text-sm">{{ inv.workshopName ?? '–' }}</td>
+          <td class="text-sm max-w-xs truncate">{{ inv.repairContext ?? '–' }}</td>
+          <td class="text-sm text-right font-medium">{{ inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}</td>
+          <td>
+            <span *ngIf="inv.hasAnomalies"  class="badge-warning">⚠️ Warnung</span>
+            <span *ngIf="inv.processingError" class="badge-error">Fehler</span>
+            <span *ngIf="!inv.hasAnomalies && !inv.processingError" class="badge-ok">✓ OK</span>
           </td>
-        </ng-container>
-
-        <ng-container matColumnDef="totalAmount">
-          <th mat-header-cell *matHeaderCellDef style="text-align:right;">Betrag</th>
-          <td mat-cell *matCellDef="let inv" style="text-align:right;">
-            {{ inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}
-          </td>
-        </ng-container>
-
-        <ng-container matColumnDef="status">
-          <th mat-header-cell *matHeaderCellDef>Status</th>
-          <td mat-cell *matCellDef="let inv">
-            <mat-chip *ngIf="inv.hasAnomalies" class="anomaly-chip" style="font-size:11px;">
-              <mat-icon style="font-size:14px;width:14px;height:14px;">warning</mat-icon>&nbsp;Warnung
-            </mat-chip>
-            <mat-chip *ngIf="inv.processingError" color="warn" style="font-size:11px;">Fehler</mat-chip>
-            <mat-chip *ngIf="!inv.hasAnomalies && !inv.processingError" style="background:#e8f5e9;font-size:11px;">OK</mat-chip>
-          </td>
-        </ng-container>
-
-        <tr mat-header-row *matHeaderRowDef="invoiceColumns"></tr>
-        <tr mat-row *matRowDef="let row; columns: invoiceColumns;"
-            class="clickable-row" (click)="goToInvoice(row)"></tr>
-      </table>
-      <div *ngIf="invoices.length === 0" style="padding:32px;text-align:center;color:#9e9e9e;">
-        Noch keine Rechnungen für dieses Fahrzeug
-      </div>
-    </mat-card-content>
-  </mat-card>
-
+        </tr>
+      </tbody>
+    </table>
+    <div *ngIf="invoices.length === 0" class="py-12 text-center text-gray-400 text-sm">
+      Noch keine Rechnungen für dieses Fahrzeug
+    </div>
+  </div>
 </ng-container>

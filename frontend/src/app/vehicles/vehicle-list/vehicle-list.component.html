@@ -1,65 +1,45 @@
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-  <h2 style="margin:0; color:#1565c0;">Fahrzeuge</h2>
-  <button mat-raised-button color="primary" (click)="openDialog()">
-    <mat-icon>add</mat-icon> Fahrzeug hinzufügen
-  </button>
-</div>
+<div class="space-y-4">
+  <div class="flex items-center justify-between">
+    <h1 class="text-2xl font-bold text-gray-900">Fahrzeuge</h1>
+    <button class="btn-primary" (click)="openDialog()">➕ Fahrzeug hinzufügen</button>
+  </div>
 
-<div *ngIf="loading" style="text-align:center; padding:40px;">
-  <mat-spinner diameter="40" style="margin:auto;"></mat-spinner>
-</div>
+  <div *ngIf="errorMsg" class="warning-banner">⚠️ {{ errorMsg }}</div>
 
-<mat-card *ngIf="!loading">
-  <mat-card-content style="padding:0;">
-    <table mat-table [dataSource]="vehicles" style="width:100%;">
+  <div *ngIf="loading" class="flex justify-center py-20">
+    <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+  </div>
 
-      <ng-container matColumnDef="licensePlate">
-        <th mat-header-cell *matHeaderCellDef>Kennzeichen</th>
-        <td mat-cell *matCellDef="let v">
-          <strong style="font-size:15px;">{{ v.licensePlate }}</strong>
-        </td>
-      </ng-container>
-
-      <ng-container matColumnDef="vehicleType">
-        <th mat-header-cell *matHeaderCellDef>Typ</th>
-        <td mat-cell *matCellDef="let v">{{ v.vehicleType ?? '–' }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="manufacturer">
-        <th mat-header-cell *matHeaderCellDef>Hersteller</th>
-        <td mat-cell *matCellDef="let v">{{ v.manufacturer ?? '–' }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="model">
-        <th mat-header-cell *matHeaderCellDef>Modell</th>
-        <td mat-cell *matCellDef="let v">{{ v.model ?? '–' }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="year">
-        <th mat-header-cell *matHeaderCellDef>Baujahr</th>
-        <td mat-cell *matCellDef="let v">{{ v.year ?? '–' }}</td>
-      </ng-container>
-
-      <ng-container matColumnDef="actions">
-        <th mat-header-cell *matHeaderCellDef></th>
-        <td mat-cell *matCellDef="let v">
-          <button mat-icon-button (click)="openDialog(v); $event.stopPropagation()" matTooltip="Bearbeiten">
-            <mat-icon>edit</mat-icon>
-          </button>
-          <button mat-icon-button color="warn" (click)="delete(v, $event)" matTooltip="Löschen">
-            <mat-icon>delete</mat-icon>
-          </button>
-        </td>
-      </ng-container>
-
-      <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-      <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-          class="clickable-row" (click)="goToDetail(row)"></tr>
+  <div *ngIf="!loading" class="card p-0 overflow-hidden">
+    <table class="table-auto w-full">
+      <thead><tr>
+        <th>Kennzeichen</th><th>Typ</th><th>Hersteller</th><th>Modell</th><th>Baujahr</th><th></th>
+      </tr></thead>
+      <tbody>
+        <tr *ngFor="let v of vehicles" (click)="goToDetail(v)">
+          <td><span class="font-bold text-blue-700">{{ v.licensePlate }}</span></td>
+          <td>{{ v.vehicleType ?? '–' }}</td>
+          <td>{{ v.manufacturer ?? '–' }}</td>
+          <td>{{ v.model ?? '–' }}</td>
+          <td>{{ v.year ?? '–' }}</td>
+          <td class="text-right" (click)="$event.stopPropagation()">
+            <button class="btn-icon" (click)="openDialog(v)" title="Bearbeiten">✏️</button>
+            <button class="btn-icon" (click)="delete(v, $event)" title="Löschen">🗑️</button>
+          </td>
+        </tr>
+      </tbody>
     </table>
-
-    <div *ngIf="vehicles.length === 0" style="padding:32px; text-align:center; color:#9e9e9e;">
-      <mat-icon style="font-size:48px; width:48px; height:48px;">local_shipping</mat-icon>
+    <div *ngIf="vehicles.length === 0" class="py-16 text-center text-gray-400">
+      <div class="text-4xl mb-3">🚛</div>
       <p>Noch keine Fahrzeuge. Rechnungen werden automatisch erkannt.</p>
     </div>
-  </mat-card-content>
-</mat-card>
+  </div>
+</div>
+
+<!-- Dialog -->
+<app-vehicle-dialog
+  *ngIf="dialogOpen"
+  [vehicle]="editingVehicle"
+  (saved)="onSaved($event)"
+  (cancel)="dialogOpen = false">
+</app-vehicle-dialog>

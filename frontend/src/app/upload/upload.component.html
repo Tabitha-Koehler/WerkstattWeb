@@ -1,84 +1,82 @@
-<div style="max-width:800px;margin:0 auto;">
-  <h2 style="margin-top:0;color:#1565c0;">Rechnungen hochladen</h2>
+<div class="max-w-2xl mx-auto space-y-4">
+  <h1 class="text-2xl font-bold text-gray-900">Rechnungen hochladen</h1>
 
-  <!-- Info-Hinweis -->
-  <mat-card style="margin-bottom:16px;background:#e3f2fd;border-left:4px solid #1565c0;">
-    <mat-card-content style="display:flex;align-items:center;gap:12px;padding:12px 16px;">
-      <mat-icon style="color:#1565c0;">info</mat-icon>
-      <div style="font-size:14px;">
-        <strong>Automatische Erkennung aktiv:</strong> Neue PDFs im Ordner
-        <code style="background:#fff;padding:2px 6px;border-radius:4px;">rechnungen_pdf</code>
-        werden automatisch verarbeitet. Hier kannst du Rechnungen manuell hochladen.
-      </div>
-    </mat-card-content>
-  </mat-card>
+  <!-- Info -->
+  <div class="info-banner">
+    <strong>Automatische Erkennung aktiv:</strong> Neue PDFs im Ordner
+    <code class="bg-white px-1.5 py-0.5 rounded text-xs ml-1">rechnungen_pdf</code>
+    werden automatisch verarbeitet. Hier kannst du Rechnungen manuell hochladen.
+  </div>
 
   <!-- Drop-Zone -->
-  <div class="upload-zone"
-    [class.dragover]="dragOver"
+  <div
+    class="border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors"
+    [class.border-blue-400]="dragOver"
+    [class.bg-blue-50]="dragOver"
+    [class.border-gray-300]="!dragOver"
+    [class.hover:border-blue-300]="!dragOver"
     (dragover)="onDragOver($event)"
     (dragleave)="onDragLeave()"
     (drop)="onDrop($event)"
-    (click)="fileInput.click()"
-    style="margin-bottom:16px;"
-    [style.background]="dragOver ? '#e3f2fd' : ''">
-    <mat-icon style="font-size:48px;width:48px;height:48px;color:#90caf9;">upload_file</mat-icon>
-    <p style="margin:8px 0 4px;font-size:16px;font-weight:500;">PDF-Dateien hier ablegen oder klicken</p>
-    <p style="margin:0;color:#757575;font-size:13px;">Unterstützt: PDF/A · Mehrere Dateien gleichzeitig möglich</p>
+    (click)="fileInput.click()">
+    <div class="text-5xl mb-3">📄</div>
+    <p class="text-base font-medium text-gray-700">PDF-Dateien hier ablegen oder klicken</p>
+    <p class="text-sm text-gray-400 mt-1">Unterstützt: PDF/A · Mehrere Dateien gleichzeitig möglich</p>
     <input #fileInput type="file" accept=".pdf" multiple hidden (change)="onFileSelect($event)">
   </div>
 
   <!-- Warteschlange -->
-  <mat-card *ngIf="queue.length > 0">
-    <mat-card-header style="padding-bottom:0;">
-      <mat-card-title>
-        Warteschlange ({{ queue.length }})
-        <span *ngIf="doneCount() > 0" style="color:#2e7d32;font-size:14px;margin-left:8px;">✓ {{ doneCount() }} fertig</span>
-        <span *ngIf="errorCount() > 0" style="color:#c62828;font-size:14px;margin-left:8px;">✗ {{ errorCount() }} Fehler</span>
-      </mat-card-title>
-    </mat-card-header>
-    <mat-card-content style="padding-top:8px;">
-      <mat-list>
-        <mat-list-item *ngFor="let item of queue; let i = index" style="height:auto;padding:8px 0;">
-          <!-- Status-Icon -->
-          <mat-icon matListItemIcon *ngIf="item.status === 'pending'"   style="color:#90a4ae;">hourglass_empty</mat-icon>
-          <mat-icon matListItemIcon *ngIf="item.status === 'uploading'" style="color:#1565c0;">sync</mat-icon>
-          <mat-icon matListItemIcon *ngIf="item.status === 'done' && !item.result?.hasAnomalies" style="color:#2e7d32;">check_circle</mat-icon>
-          <mat-icon matListItemIcon *ngIf="item.status === 'done' && item.result?.hasAnomalies"  style="color:#ff6f00;">warning</mat-icon>
-          <mat-icon matListItemIcon *ngIf="item.status === 'error'"     style="color:#c62828;">error</mat-icon>
+  <div *ngIf="queue.length > 0" class="card">
+    <div class="flex items-center gap-3 mb-4">
+      <h2 class="font-semibold text-gray-800">Warteschlange ({{ queue.length }})</h2>
+      <span *ngIf="doneCount() > 0" class="text-green-700 text-sm">✓ {{ doneCount() }} fertig</span>
+      <span *ngIf="errorCount() > 0" class="text-red-700 text-sm">✗ {{ errorCount() }} Fehler</span>
+    </div>
 
-          <span matListItemTitle>{{ item.file.name }}</span>
-          <span matListItemLine *ngIf="item.status === 'pending'">Wartet auf Upload</span>
-          <span matListItemLine *ngIf="item.status === 'uploading'">
-            <mat-progress-bar mode="indeterminate" style="width:200px;display:inline-block;vertical-align:middle;"></mat-progress-bar>
-            &nbsp;KI analysiert...
-          </span>
-          <span matListItemLine *ngIf="item.status === 'done' && item.result" style="cursor:pointer;color:#1565c0;" (click)="goToResult(item)">
+    <div class="space-y-2">
+      <div *ngFor="let item of queue; let i = index"
+           class="flex items-start gap-3 p-3 rounded-lg bg-gray-50 border border-gray-200">
+        <!-- Icon -->
+        <span *ngIf="item.status === 'pending'"   class="text-gray-400 text-lg">⏳</span>
+        <span *ngIf="item.status === 'uploading'" class="text-blue-600 text-lg animate-spin inline-block">⏳</span>
+        <span *ngIf="item.status === 'done' && !item.result?.hasAnomalies" class="text-green-600 text-lg">✅</span>
+        <span *ngIf="item.status === 'done' && item.result?.hasAnomalies"  class="text-orange-500 text-lg">⚠️</span>
+        <span *ngIf="item.status === 'error'"     class="text-red-600 text-lg">❌</span>
+
+        <div class="flex-1 min-w-0">
+          <div class="text-sm font-medium text-gray-800 truncate">{{ item.file.name }}</div>
+          <div *ngIf="item.status === 'pending'" class="text-xs text-gray-400">Wartet auf Upload</div>
+          <div *ngIf="item.status === 'uploading'" class="text-xs text-blue-600">
+            <div class="w-full bg-blue-100 rounded-full h-1 mt-1">
+              <div class="bg-blue-600 h-1 rounded-full animate-pulse w-2/3"></div>
+            </div>
+            KI analysiert...
+          </div>
+          <div *ngIf="item.status === 'done' && item.result"
+               class="text-xs text-blue-600 cursor-pointer hover:underline mt-0.5"
+               (click)="goToResult(item)">
             ✓ {{ item.result!.vehicle?.licensePlate ?? 'Lager' }} –
             {{ item.result!.workshopName }} –
             {{ item.result!.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}
-            <span *ngIf="item.result!.hasAnomalies" style="color:#ff6f00;"> ⚠️ Warnung</span>
+            <span *ngIf="item.result!.hasAnomalies" class="text-orange-500"> ⚠️ Warnung</span>
             → Klicken zum Anzeigen
-          </span>
-          <span matListItemLine *ngIf="item.status === 'error'" style="color:#c62828;">
+          </div>
+          <div *ngIf="item.status === 'error'" class="text-xs text-red-600 mt-0.5">
             Fehler: {{ item.error }}
-          </span>
+          </div>
+        </div>
 
-          <button mat-icon-button *ngIf="item.status === 'pending'" (click)="removeItem(i)" matListItemMeta>
-            <mat-icon>close</mat-icon>
-          </button>
-        </mat-list-item>
-      </mat-list>
-    </mat-card-content>
-    <mat-card-actions>
-      <button mat-raised-button color="primary"
+        <button *ngIf="item.status === 'pending'" class="btn-icon text-xs" (click)="removeItem(i)">✕</button>
+      </div>
+    </div>
+
+    <div class="flex gap-2 mt-4">
+      <button class="btn-primary"
         [disabled]="uploading || pendingCount() === 0"
         (click)="uploadAll()">
-        <mat-icon>cloud_upload</mat-icon>
-        {{ uploading ? 'Wird verarbeitet...' : 'Alle ' + pendingCount() + ' Rechnungen hochladen' }}
+        {{ uploading ? '⏳ Wird verarbeitet...' : '⬆️ ' + pendingCount() + ' Rechnung(en) hochladen' }}
       </button>
-      <button mat-button (click)="queue = []" [disabled]="uploading">Leeren</button>
-    </mat-card-actions>
-  </mat-card>
-
+      <button class="btn-secondary" (click)="queue = []" [disabled]="uploading">Leeren</button>
+    </div>
+  </div>
 </div>

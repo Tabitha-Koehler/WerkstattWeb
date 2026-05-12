@@ -1,10 +1,7 @@
 import { Component, OnInit } from '@angular/core';
-import { MatDialog } from '@angular/material/dialog';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { Router } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { Vehicle } from '../../core/models/models';
-import { VehicleDialogComponent } from '../vehicle-dialog/vehicle-dialog.component';
 
 @Component({
   selector: 'app-vehicle-list',
@@ -14,14 +11,11 @@ import { VehicleDialogComponent } from '../vehicle-dialog/vehicle-dialog.compone
 export class VehicleListComponent implements OnInit {
   vehicles: Vehicle[] = [];
   loading = true;
-  displayedColumns = ['licensePlate', 'vehicleType', 'manufacturer', 'model', 'year', 'actions'];
+  dialogOpen = false;
+  editingVehicle: Vehicle | null = null;
+  errorMsg = '';
 
-  constructor(
-    private api: ApiService,
-    private dialog: MatDialog,
-    private snackBar: MatSnackBar,
-    private router: Router,
-  ) {}
+  constructor(private api: ApiService, private router: Router) {}
 
   ngOnInit(): void { this.load(); }
 
@@ -29,36 +23,30 @@ export class VehicleListComponent implements OnInit {
     this.loading = true;
     this.api.getVehicles().subscribe({
       next: v => { this.vehicles = v; this.loading = false; },
-      error: () => { this.loading = false; },
+      error: () => this.loading = false,
     });
   }
 
   openDialog(vehicle?: Vehicle): void {
-    const ref = this.dialog.open(VehicleDialogComponent, {
-      width: '480px', data: vehicle ? { ...vehicle } : null,
-    });
-    ref.afterClosed().subscribe(result => {
-      if (!result) return;
-      const obs = vehicle
-        ? this.api.updateVehicle(vehicle.id, result)
-        : this.api.createVehicle(result);
-      obs.subscribe({
-        next: () => { this.snackBar.open('Gespeichert', '', { duration: 2000 }); this.load(); },
-        error: err => this.snackBar.open('Fehler: ' + (err.error?.message || err.message), '', { duration: 4000 }),
-      });
+    this.editingVehicle = vehicle ?? null;
+    this.dialogOpen = true;
+  }
+
+  onSaved(data: Partial<Vehicle>): void {
+    const obs = this.editingVehicle
+      ? this.api.updateVehicle(this.editingVehicle.id, data)
+      : this.api.createVehicle(data);
+    obs.subscribe({
+      next: () => { this.dialogOpen = false; this.load(); },
+      error: err => this.errorMsg = err?.error?.message ?? 'Fehler beim Speichern',
     });
   }
 
   delete(v: Vehicle, event: Event): void {
     event.stopPropagation();
     if (!confirm(`Fahrzeug ${v.licensePlate} wirklich löschen?`)) return;
-    this.api.deleteVehicle(v.id).subscribe({
-      next: () => { this.snackBar.open('Gelöscht', '', { duration: 2000 }); this.load(); },
-      error: () => this.snackBar.open('Fehler beim Löschen', '', { duration: 3000 }),
-    });
+    this.api.deleteVehicle(v.id).subscribe({ next: () => this.load() });
   }
 
-  goToDetail(v: Vehicle): void {
-    this.router.navigate(['/vehicles', v.id]);
-  }
+  goToDetail(v: Vehicle): void { this.router.navigate(['/vehicles', v.id]); }
 }

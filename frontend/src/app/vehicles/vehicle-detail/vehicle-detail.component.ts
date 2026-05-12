@@ -1,6 +1,5 @@
 import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { ApiService } from '../../core/services/api.service';
 import { Vehicle, Invoice, LatestInspections } from '../../core/models/models';
 
@@ -14,13 +13,11 @@ export class VehicleDetailComponent implements OnInit {
   invoices: Invoice[] = [];
   latestInspections: LatestInspections = {};
   loading = true;
-  invoiceColumns = ['invoiceDate', 'workshopName', 'repairContext', 'totalAmount', 'status'];
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private api: ApiService,
-    private snackBar: MatSnackBar,
   ) {}
 
   ngOnInit(): void {
@@ -32,7 +29,6 @@ export class VehicleDetailComponent implements OnInit {
         this.loadInspections(id);
       },
       error: () => {
-        this.snackBar.open('Fahrzeug nicht gefunden', '', { duration: 3000 });
         this.router.navigate(['/vehicles']);
       },
     });
