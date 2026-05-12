@@ -1,0 +1,128 @@
+<div *ngIf="loading" style="text-align:center;padding:60px;">
+  <mat-spinner diameter="48" style="margin:auto;"></mat-spinner>
+</div>
+
+<ng-container *ngIf="!loading && vehicle">
+
+  <!-- Kopfzeile -->
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:24px;">
+    <button mat-icon-button routerLink="/vehicles" matTooltip="Zurück">
+      <mat-icon>arrow_back</mat-icon>
+    </button>
+    <mat-icon style="font-size:32px;width:32px;height:32px;color:#1565c0;">local_shipping</mat-icon>
+    <div>
+      <h2 style="margin:0;color:#1565c0;">{{ vehicle.licensePlate }}</h2>
+      <span style="color:#616161;">{{ vehicle.vehicleType }} {{ vehicle.manufacturer }} {{ vehicle.model }} {{ vehicle.year }}</span>
+    </div>
+    <span style="flex:1;"></span>
+    <button mat-stroked-button routerLink="/upload">
+      <mat-icon>upload_file</mat-icon> Rechnung hochladen
+    </button>
+  </div>
+
+  <!-- Statistik-Leiste -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px;">
+    <mat-card style="text-align:center;padding:16px;">
+      <div style="font-size:26px;font-weight:700;color:#1565c0;">{{ invoices.length }}</div>
+      <div style="color:#616161;font-size:13px;">Rechnungen</div>
+    </mat-card>
+    <mat-card style="text-align:center;padding:16px;">
+      <div style="font-size:26px;font-weight:700;color:#2e7d32;">{{ totalCost() | currency:'EUR':'symbol':'1.2-2':'de' }}</div>
+      <div style="color:#616161;font-size:13px;">Gesamtkosten</div>
+    </mat-card>
+    <mat-card style="text-align:center;padding:16px;" [style.borderLeft]="anomalyCount() > 0 ? '4px solid #ff6f00' : ''">
+      <div style="font-size:26px;font-weight:700;" [style.color]="anomalyCount() > 0 ? '#ff6f00' : '#2e7d32'">{{ anomalyCount() }}</div>
+      <div style="color:#616161;font-size:13px;">Warnungen</div>
+    </mat-card>
+  </div>
+
+  <!-- SP / HU / AU Status -->
+  <mat-card class="detail-card">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>fact_check</mat-icon>
+      <mat-card-title>Prüfungsstatus</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:8px;">
+
+        <div *ngFor="let type of ['SP','HU','AU']" style="border:1px solid #e0e0e0;border-radius:8px;padding:16px;text-align:center;">
+          <span class="badge-{{type}}" style="font-size:16px;padding:4px 14px;">{{ type }}</span>
+          <ng-container *ngIf="latestInspections[type]; else noInspection">
+            <div style="margin-top:10px;font-size:13px;color:#424242;">
+              <div>Datum: <strong>{{ latestInspections[type]!.inspectionDate | date:'dd.MM.yyyy' }}</strong></div>
+              <div *ngIf="latestInspections[type]!.nextDueDate">
+                Nächste Fälligkeit:<br>
+                <strong [class]="inspectionStatusClass(latestInspections[type]!.nextDueDate!)">
+                  {{ latestInspections[type]!.nextDueDate | date:'dd.MM.yyyy' }}
+                </strong><br>
+                <span [class]="inspectionStatusClass(latestInspections[type]!.nextDueDate!)">
+                  {{ inspectionStatusText(latestInspections[type]!.nextDueDate!) }}
+                </span>
+              </div>
+              <div *ngIf="!latestInspections[type]!.nextDueDate" class="status-unknown">Kein Fälligkeitsdatum</div>
+            </div>
+          </ng-container>
+          <ng-template #noInspection>
+            <div style="margin-top:10px;font-size:13px;" class="status-unknown">Kein Eintrag vorhanden</div>
+          </ng-template>
+        </div>
+
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Rechnungsliste -->
+  <mat-card class="detail-card">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>receipt_long</mat-icon>
+      <mat-card-title>Rechnungen ({{ invoices.length }})</mat-card-title>
+    </mat-card-header>
+    <mat-card-content style="padding:0;">
+      <table mat-table [dataSource]="invoices" style="width:100%;">
+
+        <ng-container matColumnDef="invoiceDate">
+          <th mat-header-cell *matHeaderCellDef>Datum</th>
+          <td mat-cell *matCellDef="let inv">{{ inv.invoiceDate | date:'dd.MM.yyyy' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="workshopName">
+          <th mat-header-cell *matHeaderCellDef>Werkstatt</th>
+          <td mat-cell *matCellDef="let inv">{{ inv.workshopName ?? '–' }}</td>
+        </ng-container>
+
+        <ng-container matColumnDef="repairContext">
+          <th mat-header-cell *matHeaderCellDef>Reparatur</th>
+          <td mat-cell *matCellDef="let inv" style="max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            {{ inv.repairContext ?? '–' }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="totalAmount">
+          <th mat-header-cell *matHeaderCellDef style="text-align:right;">Betrag</th>
+          <td mat-cell *matCellDef="let inv" style="text-align:right;">
+            {{ inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}
+          </td>
+        </ng-container>
+
+        <ng-container matColumnDef="status">
+          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <td mat-cell *matCellDef="let inv">
+            <mat-chip *ngIf="inv.hasAnomalies" class="anomaly-chip" style="font-size:11px;">
+              <mat-icon style="font-size:14px;width:14px;height:14px;">warning</mat-icon>&nbsp;Warnung
+            </mat-chip>
+            <mat-chip *ngIf="inv.processingError" color="warn" style="font-size:11px;">Fehler</mat-chip>
+            <mat-chip *ngIf="!inv.hasAnomalies && !inv.processingError" style="background:#e8f5e9;font-size:11px;">OK</mat-chip>
+          </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="invoiceColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: invoiceColumns;"
+            class="clickable-row" (click)="goToInvoice(row)"></tr>
+      </table>
+      <div *ngIf="invoices.length === 0" style="padding:32px;text-align:center;color:#9e9e9e;">
+        Noch keine Rechnungen für dieses Fahrzeug
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+</ng-container>

@@ -1,0 +1,124 @@
+<h2 style="margin-top:0; color:#1565c0;">Dashboard</h2>
+
+<div *ngIf="loading" style="text-align:center; padding:40px;">
+  <mat-spinner diameter="40" style="margin:auto;"></mat-spinner>
+</div>
+
+<ng-container *ngIf="!loading">
+
+  <!-- Statistik-Karten -->
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap:16px; margin-bottom:24px;">
+    <mat-card>
+      <mat-card-content style="text-align:center; padding:20px 16px;">
+        <mat-icon style="font-size:36px; width:36px; height:36px; color:#1565c0;">receipt_long</mat-icon>
+        <div style="font-size:32px; font-weight:700; color:#1565c0;">{{ stats?.total ?? 0 }}</div>
+        <div style="color:#616161;">Rechnungen gesamt</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card style="border-left: 4px solid #ff6f00;">
+      <mat-card-content style="text-align:center; padding:20px 16px;">
+        <mat-icon style="font-size:36px; width:36px; height:36px; color:#ff6f00;">warning</mat-icon>
+        <div style="font-size:32px; font-weight:700; color:#ff6f00;">{{ stats?.withAnomalies ?? 0 }}</div>
+        <div style="color:#616161;">Mit Warnungen</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card>
+      <mat-card-content style="text-align:center; padding:20px 16px;">
+        <mat-icon style="font-size:36px; width:36px; height:36px; color:#6a1b9a;">warehouse</mat-icon>
+        <div style="font-size:32px; font-weight:700; color:#6a1b9a;">{{ stats?.warehouse ?? 0 }}</div>
+        <div style="color:#616161;">Lagerrechnungen</div>
+      </mat-card-content>
+    </mat-card>
+
+    <mat-card *ngIf="(stats?.errors ?? 0) > 0" style="border-left: 4px solid #c62828;">
+      <mat-card-content style="text-align:center; padding:20px 16px;">
+        <mat-icon style="font-size:36px; width:36px; height:36px; color:#c62828;">error</mat-icon>
+        <div style="font-size:32px; font-weight:700; color:#c62828;">{{ stats?.errors }}</div>
+        <div style="color:#616161;">Verarbeitungsfehler</div>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <!-- Überfällige Prüfungen -->
+  <mat-card *ngIf="overdueInspections.length > 0" style="margin-bottom:16px; border-left:4px solid #c62828;">
+    <mat-card-header>
+      <mat-icon mat-card-avatar style="color:#c62828;">dangerous</mat-icon>
+      <mat-card-title style="color:#c62828;">Überfällige Prüfungen ({{ overdueInspections.length }})</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-list>
+        <mat-list-item *ngFor="let insp of overdueInspections"
+          [routerLink]="['/vehicles', insp.vehicleId]" style="cursor:pointer;">
+          <mat-icon matListItemIcon style="color:#c62828;">error</mat-icon>
+          <span matListItemTitle>
+            <strong>{{ insp.vehicle?.licensePlate }}</strong>
+            &nbsp;–&nbsp;<span class="badge-{{ insp.type }}">{{ insp.type }}</span>
+          </span>
+          <span matListItemLine class="status-overdue">
+            Fällig: {{ insp.nextDueDate | date:'dd.MM.yyyy' }}
+            ({{ daysUntil(insp.nextDueDate!) * -1 }} Tage überfällig)
+          </span>
+        </mat-list-item>
+      </mat-list>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Bald fällige Prüfungen -->
+  <mat-card *ngIf="upcomingInspections.length > 0" style="margin-bottom:16px;">
+    <mat-card-header>
+      <mat-icon mat-card-avatar style="color:#e65100;">schedule</mat-icon>
+      <mat-card-title>Demnächst fällig (60 Tage)</mat-card-title>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-list>
+        <mat-list-item *ngFor="let insp of upcomingInspections"
+          [routerLink]="['/vehicles', insp.vehicleId]" style="cursor:pointer;">
+          <mat-icon matListItemIcon style="color:#e65100;">schedule</mat-icon>
+          <span matListItemTitle>
+            <strong>{{ insp.vehicle?.licensePlate }}</strong>
+            &nbsp;–&nbsp;<span class="badge-{{ insp.type }}">{{ insp.type }}</span>
+          </span>
+          <span matListItemLine [class]="inspectionClass(insp.nextDueDate!)">
+            Fällig: {{ insp.nextDueDate | date:'dd.MM.yyyy' }}
+            (noch {{ daysUntil(insp.nextDueDate!) }} Tage)
+          </span>
+        </mat-list-item>
+      </mat-list>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Letzte Rechnungen -->
+  <mat-card>
+    <mat-card-header>
+      <mat-icon mat-card-avatar>receipt_long</mat-icon>
+      <mat-card-title>Zuletzt verarbeitete Rechnungen</mat-card-title>
+      <mat-card-subtitle>
+        <a routerLink="/invoices" style="color:#1565c0;">Alle anzeigen →</a>
+      </mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-list>
+        <mat-list-item *ngFor="let inv of recentInvoices"
+          [routerLink]="['/invoices', inv.id]" style="cursor:pointer;">
+          <mat-icon matListItemIcon [style.color]="inv.hasAnomalies ? '#ff6f00' : '#2e7d32'">
+            {{ inv.hasAnomalies ? 'warning' : 'check_circle' }}
+          </mat-icon>
+          <span matListItemTitle>
+            {{ inv.vehicle?.licensePlate ?? 'Lager' }} – {{ inv.workshopName ?? 'Unbekannte Werkstatt' }}
+          </span>
+          <span matListItemLine>
+            {{ inv.repairContext ?? 'Kein Kontext' }}
+            &nbsp;·&nbsp;{{ inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}
+            &nbsp;·&nbsp;{{ inv.createdAt | date:'dd.MM.yyyy' }}
+          </span>
+        </mat-list-item>
+        <mat-list-item *ngIf="recentInvoices.length === 0">
+          <span matListItemTitle style="color:#9e9e9e;">Noch keine Rechnungen vorhanden</span>
+        </mat-list-item>
+      </mat-list>
+    </mat-card-content>
+  </mat-card>
+
+</ng-container>
