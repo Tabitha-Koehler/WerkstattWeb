@@ -7,9 +7,10 @@ export default () => ({
     password: process.env.DB_PASSWORD || 'werkstatt2024',
     name: process.env.DB_NAME || 'werkstattweb',
   },
-  anthropic: {
-    apiKey: process.env.ANTHROPIC_API_KEY || '',
+  ollama: {
+    url: process.env.OLLAMA_URL || 'http://localhost:11434',
+    model: process.env.OLLAMA_MODEL || 'llama3.2',
   },
-  watchFolder: process.env.WATCH_FOLDER || 'C:\\Rechnungen\\Eingang',
+  watchFolder: process.env.WATCH_FOLDER || 'C:\\WerkstattWeb\\rechnungen_pdf',
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:4200',
 });

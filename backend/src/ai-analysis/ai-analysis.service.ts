@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Anthropic from '@anthropic-ai/sdk';
+import * as https from 'https';
+import * as http from 'http';
 
 export interface InvoicePosition {
   description: string;
@@ -48,37 +49,35 @@ export interface AnalysisResult {
 @Injectable()
 export class AiAnalysisService {
   private readonly logger = new Logger(AiAnalysisService.name);
-  private readonly client: Anthropic;
+  private readonly ollamaUrl: string;
+  private readonly model: string;
 
   constructor(private readonly configService: ConfigService) {
-    this.client = new Anthropic({
-      apiKey: this.configService.get<string>('anthropic.apiKey'),
-    });
+    this.ollamaUrl = this.configService.get<string>('ollama.url') || 'http://localhost:11434';
+    this.model = this.configService.get<string>('ollama.model') || 'llama3.2';
   }
 
   async analyzeInvoice(rawText: string, filename: string): Promise<AnalysisResult> {
-    const prompt = `Du analysierst eine deutsche Werkstattrechnung für eine Spedition.
-
-Extrahiere alle relevanten Informationen und gib sie als valides JSON zurück.
+    const prompt = `Du analysierst eine deutsche Werkstattrechnung für eine Spedition. Antworte NUR mit validem JSON, ohne Erklärungen, ohne Markdown, ohne Code-Fences.
 
 RECHNUNGSTEXT:
-${rawText}
+${rawText.substring(0, 6000)}
 
 DATEINAME: ${filename}
 
-Gib NUR das folgende JSON zurück, ohne Erklärungen, ohne Markdown-Blöcke, ohne Code-Fences:
+Gib genau dieses JSON zurück:
 {
-  "licensePlate": "Kennzeichen im deutschen Format z.B. HH-AB-1234 oder null wenn nicht vorhanden",
+  "licensePlate": "Kennzeichen z.B. HH-AB-1234 oder null",
   "workshopName": "Name der Werkstatt",
-  "invoiceNumber": "Rechnungsnummer als String",
+  "invoiceNumber": "Rechnungsnummer",
   "invoiceDate": "YYYY-MM-DD oder null",
   "totalAmount": 0.00,
   "currency": "EUR",
-  "repairContext": "Kurze Beschreibung wofür die Reparatur war z.B. Bremsenwechsel Vorderachse",
-  "summary": "Zusammenfassung der Rechnung auf Deutsch in 2-3 Sätzen",
+  "repairContext": "Kurzbeschreibung der Reparatur z.B. Bremsenwechsel Vorderachse",
+  "summary": "Zusammenfassung in 2 Sätzen",
   "positions": [
     {
-      "description": "Beschreibung der Position",
+      "description": "Positionsbezeichnung",
       "quantity": 1.0,
       "unit": "Stk",
       "unitPrice": 0.00,
@@ -93,52 +92,145 @@ Gib NUR das folgende JSON zurück, ohne Erklärungen, ohne Markdown-Blöcke, ohn
   "anomalies": []
 }
 
-Kategorien für Positionen:
-- REPAIR: Reparaturarbeiten, Instandsetzung
-- INSPECTION: SP (Sicherheitsprüfung), HU (Hauptuntersuchung), AU (Abgasuntersuchung)
-- BETRIEBSMITTEL: Motoröl, Hydrauliköl, Kühlmittel, Kraftstoff, Fette, Flüssigkeiten
-- LABOR: Lohnkosten, Arbeitszeit, Montage
-- PARTS: Ersatzteile, Verschleißteile
-- TOOLS: Werkzeuge, Spezialwerkzeug (IMMER als Anomalie markieren!)
-- OTHER: Sonstiges
-
-Anomalien MÜSSEN markiert werden wenn:
-1. Werkzeuge (Schraubenschlüssel, Spezialwerkzeug, etc.) auf Reparaturrechnung
-2. Mehr als 2 Kanister/Gebinde Öl, die nicht zum Reparaturkontext passen
-3. Positionen die eindeutig nicht zur angegebenen Reparatur gehören (z.B. Klimaservice bei Bremsenwechsel)
-4. Ungewöhnlich große Mengen Verbrauchsmaterial
-5. Teile für andere Fahrzeugtypen als das berechnete Fahrzeug
-
-Für SP/HU/AU in inspections: Falls das Datum aus dem Text erkennbar ist eintragen, nextDueDate wenn angegeben.
-Für operatingSupplies: Alle Öle, Flüssigkeiten, Kraftstoffe als separate Einträge.`;
+Kategorien: REPAIR, INSPECTION, BETRIEBSMITTEL, LABOR, PARTS, TOOLS, OTHER
+Anomalien markieren wenn: Werkzeuge auf Reparaturrechnung, mehr als 2 Öl-Kanister die nicht zur Reparatur passen, Positionen die nicht zum Reparaturkontext passen.
+SP=Sicherheitsprüfung, HU=Hauptuntersuchung, AU=Abgasuntersuchung als inspections eintragen.`;
 
     try {
-      const response = await this.client.messages.create({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: prompt }],
-      });
-
-      const content = response.content[0];
-      if (content.type !== 'text') {
-        throw new Error('Unerwarteter Antworttyp von Claude API');
-      }
-
-      let text = content.text.trim();
-      // JSON aus Markdown-Blöcken extrahieren falls vorhanden
-      const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        text = jsonMatch[1].trim();
-      }
-
-      const result: AnalysisResult = JSON.parse(text);
+      const responseText = await this.callOllama(prompt);
+      const result: AnalysisResult = this.parseJson(responseText);
       this.logger.log(
-        `Analyse abgeschlossen für ${filename}: ${result.anomalies?.length || 0} Anomalien gefunden`,
+        `Ollama-Analyse abgeschlossen für ${filename}: ${result.anomalies?.length || 0} Anomalien`,
       );
       return result;
     } catch (error) {
-      this.logger.error(`Fehler bei Analyse von ${filename}: ${error.message}`);
-      throw error;
+      this.logger.error(`Ollama-Fehler bei ${filename}: ${error.message}`);
+      // Fallback: regelbasierte Extraktion
+      return this.ruleBasedFallback(rawText, filename);
     }
+  }
+
+  private callOllama(prompt: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const url = new URL('/api/generate', this.ollamaUrl);
+      const isHttps = url.protocol === 'https:';
+      const body = JSON.stringify({
+        model: this.model,
+        prompt,
+        stream: false,
+        options: { temperature: 0.1, num_predict: 4096 },
+      });
+
+      const options = {
+        hostname: url.hostname,
+        port: url.port || (isHttps ? 443 : 80),
+        path: url.pathname,
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(body),
+        },
+      };
+
+      const req = (isHttps ? https : http).request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => (data += chunk));
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data);
+            resolve(parsed.response || '');
+          } catch {
+            reject(new Error('Ungültige Antwort von Ollama'));
+          }
+        });
+      });
+
+      req.on('error', (e) =>
+        reject(new Error(`Ollama nicht erreichbar (${this.ollamaUrl}): ${e.message}`)),
+      );
+      req.setTimeout(120000, () => {
+        req.destroy();
+        reject(new Error('Ollama Timeout (120s)'));
+      });
+      req.write(body);
+      req.end();
+    });
+  }
+
+  private parseJson(text: string): AnalysisResult {
+    let clean = text.trim();
+    // JSON aus Markdown-Blöcken extrahieren
+    const fence = clean.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (fence) clean = fence[1].trim();
+    // Erstes { bis letztes } extrahieren
+    const start = clean.indexOf('{');
+    const end = clean.lastIndexOf('}');
+    if (start !== -1 && end !== -1) clean = clean.substring(start, end + 1);
+    return JSON.parse(clean);
+  }
+
+  // ── Regelbasierter Fallback wenn Ollama nicht verfügbar ──────────────────
+  private ruleBasedFallback(rawText: string, filename: string): AnalysisResult {
+    this.logger.warn(`Verwende regelbasierte Extraktion für ${filename}`);
+    const text = rawText;
+
+    // Kennzeichen erkennen (deutsches Format)
+    const plateMatch = text.match(/\b([A-ZÄÖÜ]{1,3}[-\s][A-Z]{1,2}[-\s]\d{1,4}[HE]?)\b/);
+    const licensePlate = plateMatch ? plateMatch[1].replace(/\s/g, '-').toUpperCase() : null;
+
+    // Gesamtbetrag
+    const totalMatch = text.match(/(?:Gesamt|Brutto|Rechnungsbetrag|Total)[^\d]*(\d{1,6}[.,]\d{2})/i);
+    const totalAmount = totalMatch ? parseFloat(totalMatch[1].replace(',', '.')) : 0;
+
+    // Datum
+    const dateMatch = text.match(/(\d{2})\.(\d{2})\.(\d{4})/);
+    const invoiceDate = dateMatch ? `${dateMatch[3]}-${dateMatch[2]}-${dateMatch[1]}` : null;
+
+    // Werkstatt (erste Zeile die nicht leer ist)
+    const firstLine = text.split('\n').find(l => l.trim().length > 3)?.trim() || 'Unbekannte Werkstatt';
+
+    // Rechnungsnummer
+    const numMatch = text.match(/(?:Rechnungs(?:nummer|nr\.?|-))[^\d]*(\d[\d\-\/]+)/i);
+    const invoiceNumber = numMatch ? numMatch[1] : '';
+
+    // Prüfungen
+    const inspections: InspectionResult[] = [];
+    if (/\bSP\b|Sicherheitspr[üu]fung/i.test(text)) inspections.push({ type: 'SP', date: invoiceDate, nextDueDate: null });
+    if (/\bHU\b|Hauptuntersuchung/i.test(text)) inspections.push({ type: 'HU', date: invoiceDate, nextDueDate: null });
+    if (/\bAU\b|Abgasuntersuchung/i.test(text)) inspections.push({ type: 'AU', date: invoiceDate, nextDueDate: null });
+
+    // Betriebsmittel
+    const supplies: OperatingSupplyResult[] = [];
+    const oilMatch = text.match(/(\d+[.,]?\d*)\s*[lL]\s+(?:Motor|Hydraulik|Getriebe)?[öo]l/gi);
+    if (oilMatch) {
+      oilMatch.forEach(m => {
+        const qty = parseFloat(m.match(/[\d.,]+/)?.[0]?.replace(',', '.') || '0');
+        supplies.push({ type: 'Öl', quantity: qty, unit: 'L' });
+      });
+    }
+
+    // Anomalien: Werkzeug-Erkennung
+    const anomalies: AnomalyResult[] = [];
+    const toolKeywords = ['Werkzeug', 'Schraubenschlüssel', 'Zange', 'Hammer', 'Spezialwerkzeug'];
+    toolKeywords.forEach(kw => {
+      if (text.toLowerCase().includes(kw.toLowerCase())) {
+        anomalies.push({ positionDescription: kw, reason: 'Werkzeug auf Reparaturrechnung' });
+      }
+    });
+
+    return {
+      licensePlate,
+      workshopName: firstLine,
+      invoiceNumber,
+      invoiceDate,
+      totalAmount,
+      currency: 'EUR',
+      repairContext: 'Automatisch erkannt (regelbasiert)',
+      summary: `Rechnung von ${firstLine}, Betrag: ${totalAmount} EUR. Verarbeitet ohne KI (Ollama nicht aktiv).`,
+      positions: [],
+      inspections,
+      operatingSupplies: supplies,
+      anomalies,
+    };
   }
 }

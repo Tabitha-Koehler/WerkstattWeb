@@ -9,7 +9,6 @@
     "start:prod": "node dist/main"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.27.0",
     "@nestjs/common": "^10.0.0",
     "@nestjs/config": "^3.0.0",
     "@nestjs/core": "^10.0.0",
