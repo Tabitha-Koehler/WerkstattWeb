@@ -1,30 +1,84 @@
-# Dependencies
+# ──────────────────────────────────────────────
+#  WerkstattWeb – .gitignore
+# ──────────────────────────────────────────────
+
+# ── Node ──────────────────────────────────────
 node_modules/
 **/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
 
-# Build output
+# ── Build-Ausgabe ──────────────────────────────
 backend/dist/
 frontend/dist/
+**/*.js.map
+**/*.tsbuildinfo
 
-# Environment (Secrets!)
-backend/.env
-.env
-
-# Logs
-*.log
-npm-debug.log*
-
-# OS
-.DS_Store
-Thumbs.db
-
-# IDE
-.idea/
-.vscode/
-
-# Angular cache
+# ── Angular ────────────────────────────────────
 .angular/
+**/cache/
 frontend/.angular/
 
-# Uploads (PDFs werden nicht versioniert)
+# ── Umgebungsvariablen (Secrets!) ──────────────
+.env
+.env.local
+.env.*.local
+backend/.env
+# .env.example BLEIBT versioniert (keine Secrets)
+
+# ── Uploads / Rechnungen ───────────────────────
+# PDFs gehören nicht ins Repository
 backend/uploads/
+rechnungen_pdf/
+
+# ── Test & Coverage ────────────────────────────
+coverage/
+**/coverage/
+.nyc_output/
+
+# ── Betriebssystem ─────────────────────────────
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Linux
+*~
+
+# ── IDEs & Editoren ────────────────────────────
+# VS Code
+.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# JetBrains (WebStorm, IntelliJ)
+.idea/
+*.iml
+*.iws
+
+# Vim / Emacs
+*.swp
+*.swo
+*~
+\#*\#
+
+# ── PostgreSQL ─────────────────────────────────
+*.sql.bak
+pg_hba.conf.bak
+
+# ── Sonstiges ──────────────────────────────────
+*.zip
+*.tar.gz
+tmp/
+temp/
