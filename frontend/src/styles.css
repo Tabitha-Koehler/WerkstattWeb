@@ -1,5 +1,5 @@
 /* ── TailwindCSS 4 ─────────────────────────────────────────── */
-@use "tailwindcss";
+@import "tailwindcss";
 
 /* ── Dark mode via .dark class on <html> ──────────────────── */
 @custom-variant dark (&:where(.dark, .dark *));
@@ -8,51 +8,38 @@
 @theme {
   --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
 
-  /* Brand colors */
   --color-brand-50:  #eff6ff;
   --color-brand-100: #dbeafe;
-  --color-brand-200: #bfdbfe;
-  --color-brand-400: #60a5fa;
   --color-brand-500: #3b82f6;
   --color-brand-600: #2563eb;
   --color-brand-700: #1d4ed8;
-  --color-brand-800: #1e40af;
-  --color-brand-900: #1e3a8a;
-
-  /* Surface tokens – resolved at runtime via CSS variables */
-  --color-surface-bg:      var(--surface-bg);
-  --color-surface-card:    var(--surface-card);
-  --color-surface-border:  var(--surface-border);
-  --color-surface-text:    var(--surface-text);
-  --color-surface-muted:   var(--surface-muted);
-  --color-surface-hover:   var(--surface-hover);
-  --color-surface-sidebar: var(--surface-sidebar);
 }
 
 /* ── CSS Variables: Light Mode ────────────────────────────── */
 :root {
-  --surface-bg:      #f1f5f9;
-  --surface-card:    #ffffff;
-  --surface-border:  #e2e8f0;
-  --surface-text:    #0f172a;
-  --surface-muted:   #64748b;
-  --surface-hover:   #f8fafc;
-  --surface-sidebar: #ffffff;
+  --surface-bg:             #f1f5f9;
+  --surface-card:           #ffffff;
+  --surface-border:         #e2e8f0;
+  --surface-text:           #0f172a;
+  --surface-muted:          #64748b;
+  --surface-hover:          #f8fafc;
+  --surface-sidebar:        #ffffff;
   --surface-sidebar-border: #e2e8f0;
-  --surface-input:   #ffffff;
+  --surface-input:          #ffffff;
+  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
 }
 
 /* ── CSS Variables: Dark Mode ─────────────────────────────── */
 .dark {
-  --surface-bg:      #0f172a;
-  --surface-card:    #1e293b;
-  --surface-border:  #334155;
-  --surface-text:    #f1f5f9;
-  --surface-muted:   #94a3b8;
-  --surface-hover:   #283447;
-  --surface-sidebar: #1e293b;
+  --surface-bg:             #0f172a;
+  --surface-card:           #1e293b;
+  --surface-border:         #334155;
+  --surface-text:           #f1f5f9;
+  --surface-muted:          #94a3b8;
+  --surface-hover:          #283447;
+  --surface-sidebar:        #1e293b;
   --surface-sidebar-border: #334155;
-  --surface-input:   #0f172a;
+  --surface-input:          #0f172a;
 }
 
 /* ── Base ─────────────────────────────────────────────────── */
@@ -70,28 +57,15 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* ── PrimeNG Aura theme integration ──────────────────────── */
+/* ── PrimeNG component font ───────────────────────────────── */
 .p-component {
   font-family: var(--font-family-sans);
-}
-
-/* Sync PrimeNG surface to our CSS vars */
-.dark .p-datatable .p-datatable-header,
-.dark .p-datatable .p-datatable-thead > tr > th,
-.dark .p-datatable .p-datatable-tbody > tr {
-  background: var(--surface-card);
-  color: var(--surface-text);
-  border-color: var(--surface-border);
-}
-
-.dark .p-datatable .p-datatable-tbody > tr:hover {
-  background: var(--surface-hover) !important;
 }
 
 /* ── Component Library ───────────────────────────────────── */
 @layer components {
 
-  /* ── Cards ── */
+  /* Cards */
   .card {
     background-color: var(--surface-card);
     border: 1px solid var(--surface-border);
@@ -109,7 +83,7 @@ body {
     border-bottom: 1px solid var(--surface-border);
   }
 
-  /* ── Stat Cards ── */
+  /* Stat Cards */
   .stat-card {
     @apply card flex flex-col gap-1 p-5;
   }
@@ -129,7 +103,7 @@ body {
     color: var(--surface-muted);
   }
 
-  /* ── Page heading ── */
+  /* Page headings */
   .page-title {
     font-size: 1.5rem;
     font-weight: 700;
@@ -143,42 +117,41 @@ body {
     margin-top: 0.125rem;
   }
 
-  /* ── Spinner ── */
+  /* Spinner */
   .spinner {
     @apply w-10 h-10 rounded-full border-4 border-blue-500 border-t-transparent animate-spin;
   }
 
-  /* ── Fallback Buttons (when not using p-button) ── */
-  .btn {
-    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
-           transition-all duration-150 cursor-pointer border-0 focus:outline-none
-           focus:ring-2 focus:ring-offset-1;
-  }
-  .btn-primary {
-    @apply btn bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
-  }
-  .btn-secondary {
-    border: 1px solid var(--surface-border);
-    background: var(--surface-card);
-    color: var(--surface-text);
-    @apply btn hover:opacity-80 focus:ring-slate-400;
-  }
-  .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
-  }
-  .btn-ghost {
-    background: transparent;
+  /* Nav items */
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.625rem;
+    text-decoration: none;
     color: var(--surface-muted);
-    @apply btn hover:bg-slate-100 dark:hover:bg-slate-700;
-  }
-  .btn-icon {
-    background: transparent;
-    color: var(--surface-muted);
-    @apply p-2 rounded-lg transition-colors cursor-pointer border-0
-           hover:bg-slate-100 dark:hover:bg-slate-700;
+    transition: background-color 0.15s, color 0.15s;
+    cursor: pointer;
   }
 
-  /* ── Tables ── */
+  .nav-item:hover {
+    background: var(--surface-hover);
+    color: var(--surface-text);
+  }
+
+  .nav-active {
+    background: rgb(37 99 235 / 0.1) !important;
+    color: #2563eb !important;
+    font-weight: 600;
+  }
+
+  .dark .nav-active {
+    background: rgb(59 130 246 / 0.15) !important;
+    color: #60a5fa !important;
+  }
+
+  /* Tables */
   .data-table {
     width: 100%;
     border-collapse: collapse;
@@ -219,23 +192,24 @@ body {
   .anomaly-row td {
     background-color: rgb(254 243 199 / 0.4);
   }
+
   .dark .anomaly-row td {
     background-color: rgb(120 53 15 / 0.25);
   }
 
-  /* ── Status Badges ── */
+  /* Status Badges */
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
   }
-  .badge-sp      { @apply badge bg-blue-100   text-blue-800   dark:bg-blue-900/50  dark:text-blue-300; }
-  .badge-hu      { @apply badge bg-green-100  text-green-800  dark:bg-green-900/50 dark:text-green-300; }
+  .badge-sp      { @apply badge bg-blue-100   text-blue-800   dark:bg-blue-900/50   dark:text-blue-300; }
+  .badge-hu      { @apply badge bg-green-100  text-green-800  dark:bg-green-900/50  dark:text-green-300; }
   .badge-au      { @apply badge bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-300; }
   .badge-ok      { @apply badge bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300; }
   .badge-warning { @apply badge bg-amber-100  text-amber-800  dark:bg-amber-900/50  dark:text-amber-300; }
   .badge-error   { @apply badge bg-red-100    text-red-800    dark:bg-red-900/50    dark:text-red-300; }
   .badge-gray    { @apply badge bg-slate-100  text-slate-600  dark:bg-slate-700     dark:text-slate-300; }
 
-  /* ── Form Controls ── */
+  /* Form Controls */
   .form-label {
     display: block;
     font-size: 0.8125rem;
@@ -272,7 +246,7 @@ body {
     cursor: pointer;
   }
 
-  /* ── Inspection status ── */
+  /* Inspection status */
   .status-ok      { color: #16a34a; font-weight: 500; }
   .status-soon    { color: #d97706; font-weight: 600; }
   .status-overdue { color: #dc2626; font-weight: 700; }
@@ -282,7 +256,7 @@ body {
   .dark .status-soon    { color: #fbbf24; }
   .dark .status-overdue { color: #f87171; }
 
-  /* ── Alert banners ── */
+  /* Alert banners */
   .banner {
     display: flex;
     align-items: flex-start;
@@ -326,12 +300,7 @@ body {
     color: #93c5fd;
   }
 
-  /* legacy aliases */
-  .warning-banner { @apply banner-warning; }
-  .error-banner   { @apply banner-error; }
-  .info-banner    { @apply banner-info; }
-
-  /* ── Section divider ── */
+  /* Section titles */
   .section-title {
     font-size: 0.8125rem;
     font-weight: 600;
@@ -341,7 +310,7 @@ body {
     margin-bottom: 0.5rem;
   }
 
-  /* ── Empty state ── */
+  /* Empty state */
   .empty-state {
     @apply flex flex-col items-center justify-center py-16 gap-3;
     color: var(--surface-muted);
