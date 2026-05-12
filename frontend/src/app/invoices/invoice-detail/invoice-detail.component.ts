@@ -1,78 +1,67 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
+import { DatePipe, CurrencyPipe } from '@angular/common';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { catchError, EMPTY } from 'rxjs';
+import { ButtonModule } from 'primeng/button';
+import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
+import { PdfViewerModule } from 'ng2-pdf-viewer';
 import { ApiService } from '../../core/services/api.service';
-import { Invoice } from '../../core/models/models';
 
 @Component({
-  standalone: false,
+  standalone: true,
   selector: 'app-invoice-detail',
   templateUrl: './invoice-detail.component.html',
-  styleUrls: ['./invoice-detail.component.scss'],
+  imports: [DatePipe, CurrencyPipe, ButtonModule, TagModule, TooltipModule, PdfViewerModule],
 })
-export class InvoiceDetailComponent implements OnInit {
-  invoice: Invoice | null = null;
-  loading = true;
-  showPdf = false;
-  pdfUrl = '';
+export class InvoiceDetailComponent {
+  readonly router = inject(Router);
+  private route   = inject(ActivatedRoute);
+  private api     = inject(ApiService);
 
-  categoryLabels: Record<string, string> = {
+  private id = this.route.snapshot.paramMap.get('id')!;
+
+  invoice = toSignal(
+    this.api.getInvoice(this.id).pipe(
+      catchError(() => { alert('Rechnung nicht gefunden'); this.router.navigate(['/invoices']); return EMPTY; }),
+    ),
+  );
+
+  loading  = computed(() => this.invoice() === undefined);
+  showPdf  = signal(false);
+  pdfUrl   = this.api.getPdfUrl(this.id);
+
+  anomalies          = computed(() => this.invoice()?.positions?.filter(p => p.isAnomaly) ?? []);
+  inspectionPositions = computed(() => this.invoice()?.inspections ?? []);
+  supplies           = computed(() => this.invoice()?.operatingSupplies ?? []);
+
+  detailRows = computed(() => {
+    const inv = this.invoice();
+    if (!inv) return [];
+    return [
+      { label: 'Werkstatt',     value: inv.workshopName ?? '–' },
+      { label: 'Rechnungs-Nr.', value: inv.invoiceNumber ?? '–' },
+      { label: 'Datum',         value: new Date(inv.invoiceDate).toLocaleDateString('de-DE') },
+      { label: 'Kennzeichen',   value: inv.vehicle?.licensePlate ?? 'Lager' },
+      { label: 'Reparatur',     value: inv.repairContext ?? '–' },
+    ];
+  });
+
+  readonly categoryLabels: Record<string, string> = {
     REPAIR: 'Reparatur', INSPECTION: 'Prüfung', BETRIEBSMITTEL: 'Betriebsmittel',
     LABOR: 'Lohnkosten', PARTS: 'Ersatzteile', TOOLS: 'Werkzeug', OTHER: 'Sonstiges',
   };
 
-  categoryColors: Record<string, string> = {
+  readonly categoryColors: Record<string, string> = {
     REPAIR: '#dbeafe', INSPECTION: '#dcfce7', BETRIEBSMITTEL: '#ffedd5',
     LABOR: '#f3e8ff', PARTS: '#ccfbf1', TOOLS: '#fee2e2', OTHER: '#f9fafb',
   };
 
-  constructor(
-    private route: ActivatedRoute,
-    public router: Router,
-    private api: ApiService,
-  ) {}
-
-  ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id')!;
-    this.api.getInvoice(id).subscribe({
-      next: inv => {
-        this.invoice = inv;
-        this.pdfUrl = this.api.getPdfUrl(id);
-        this.loading = false;
-      },
-      error: () => {
-        alert('Rechnung nicht gefunden');
-        this.router.navigate(['/invoices']);
-      },
-    });
-  }
-
-  anomalies() {
-    return this.invoice?.positions?.filter(p => p.isAnomaly) ?? [];
-  }
-
-  inspectionPositions() {
-    return this.invoice?.inspections ?? [];
-  }
-
-  supplies() {
-    return this.invoice?.operatingSupplies ?? [];
-  }
-
-  detailRows(): Array<{ label: string; value: string }> {
-    if (!this.invoice) return [];
-    return [
-      { label: 'Werkstatt',     value: this.invoice.workshopName ?? '–' },
-      { label: 'Rechnungs-Nr.', value: this.invoice.invoiceNumber ?? '–' },
-      { label: 'Datum',         value: new Date(this.invoice.invoiceDate).toLocaleDateString('de-DE') },
-      { label: 'Kennzeichen',   value: this.invoice.vehicle?.licensePlate ?? 'Lager' },
-      { label: 'Reparatur',     value: this.invoice.repairContext ?? '–' },
-    ];
-  }
-
   deleteInvoice(): void {
     if (!confirm('Rechnung wirklich löschen?')) return;
-    this.api.deleteInvoice(this.invoice!.id).subscribe({
-      next: () => { this.router.navigate(['/invoices']); },
+    this.api.deleteInvoice(this.invoice()!.id).subscribe({
+      next: () => this.router.navigate(['/invoices']),
     });
   }
 }

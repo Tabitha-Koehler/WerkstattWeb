@@ -1,46 +1,42 @@
-import { Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { Component, inject, signal, computed } from '@angular/core';
+import { Router, RouterLink } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { DatePipe, CurrencyPipe } from '@angular/common';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ButtonModule } from 'primeng/button';
+import { TagModule } from 'primeng/tag';
 import { ApiService } from '../../core/services/api.service';
 import { Invoice } from '../../core/models/models';
 
 @Component({
-  standalone: false,
+  standalone: true,
   selector: 'app-invoice-list',
   templateUrl: './invoice-list.component.html',
-  styleUrls: ['./invoice-list.component.scss'],
+  imports: [RouterLink, FormsModule, DatePipe, CurrencyPipe, ButtonModule, TagModule],
 })
-export class InvoiceListComponent implements OnInit {
-  allInvoices: Invoice[] = [];
-  filteredInvoices: Invoice[] = [];
-  loading = true;
-  filter = '';
-  showOnlyAnomalies = false;
+export class InvoiceListComponent {
+  private api    = inject(ApiService);
+  private router = inject(Router);
 
-  constructor(private api: ApiService, private router: Router) {}
+  private allInvoices$ = toSignal(this.api.getInvoices(undefined, false));
 
-  ngOnInit(): void { this.load(); }
+  filter              = signal('');
+  showOnlyAnomalies   = signal(false);
+  loading             = computed(() => this.allInvoices$() === undefined);
 
-  load(): void {
-    this.loading = true;
-    this.api.getInvoices(undefined, false).subscribe({
-      next: invoices => { this.allInvoices = invoices; this.applyFilter(); this.loading = false; },
-      error: () => this.loading = false,
-    });
-  }
-
-  applyFilter(): void {
-    const search = this.filter.toLowerCase();
-    this.filteredInvoices = this.allInvoices.filter(inv => {
+  filteredInvoices = computed(() => {
+    const invoices = this.allInvoices$() ?? [] as Invoice[];
+    const search   = this.filter().toLowerCase();
+    return invoices.filter(inv => {
       const matchText = !search
         || (inv.vehicle?.licensePlate ?? '').toLowerCase().includes(search)
         || (inv.workshopName ?? '').toLowerCase().includes(search)
         || (inv.repairContext ?? '').toLowerCase().includes(search)
         || (inv.invoiceNumber ?? '').toLowerCase().includes(search);
-      return matchText && (!this.showOnlyAnomalies || inv.hasAnomalies);
+      return matchText && (!this.showOnlyAnomalies() || inv.hasAnomalies);
     });
-  }
+  });
 
-  toggleAnomalies(): void { this.showOnlyAnomalies = !this.showOnlyAnomalies; this.applyFilter(); }
-
+  toggleAnomalies(): void { this.showOnlyAnomalies.update(v => !v); }
   goToDetail(inv: Invoice): void { this.router.navigate(['/invoices', inv.id]); }
 }

@@ -1,49 +1,34 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
+import { RouterLink } from '@angular/router';
+import { DatePipe, CurrencyPipe } from '@angular/common';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { ApiService } from '../core/services/api.service';
-import { Invoice, InvoiceStats, Inspection } from '../core/models/models';
+import { Invoice, Inspection } from '../core/models/models';
 
 @Component({
-  standalone: false,
+  standalone: true,
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
-  styleUrls: ['./dashboard.component.scss'],
+  imports: [RouterLink, DatePipe, CurrencyPipe],
 })
-export class DashboardComponent implements OnInit {
-  stats: InvoiceStats | null = null;
-  recentInvoices: Invoice[] = [];
-  upcomingInspections: Inspection[] = [];
-  overdueInspections: Inspection[] = [];
-  loading = true;
+export class DashboardComponent {
+  private api = inject(ApiService);
 
-  constructor(private api: ApiService) {}
+  stats             = toSignal(this.api.getInvoiceStats());
+  private invoices$ = toSignal(this.api.getInvoices());
+  upcomingInspections = toSignal(this.api.getUpcomingInspections(60), { initialValue: [] as Inspection[] });
+  overdueInspections  = toSignal(this.api.getOverdueInspections(),     { initialValue: [] as Inspection[] });
 
-  ngOnInit(): void {
-    this.loadData();
-  }
-
-  loadData(): void {
-    this.loading = true;
-
-    this.api.getInvoiceStats().subscribe(s => this.stats = s);
-
-    this.api.getInvoices().subscribe(inv => {
-      this.recentInvoices = inv.slice(0, 5);
-      this.loading = false;
-    });
-
-    this.api.getUpcomingInspections(60).subscribe(insp => this.upcomingInspections = insp);
-    this.api.getOverdueInspections().subscribe(insp => this.overdueInspections = insp);
-  }
+  loading       = computed(() => this.stats() === undefined || this.invoices$() === undefined);
+  recentInvoices = computed(() => (this.invoices$() ?? [] as Invoice[]).slice(0, 5));
 
   daysUntil(dateStr: string): number {
-    const due = new Date(dateStr);
-    const today = new Date();
-    return Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000);
   }
 
   inspectionClass(dateStr: string): string {
     const d = this.daysUntil(dateStr);
-    if (d < 0) return 'status-overdue';
+    if (d < 0)   return 'status-overdue';
     if (d <= 14) return 'status-soon';
     return 'status-ok';
   }

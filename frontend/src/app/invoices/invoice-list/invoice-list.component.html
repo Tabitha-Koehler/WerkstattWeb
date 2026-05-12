@@ -10,8 +10,8 @@
       <span style="position:relative">
         <i class="fa-solid fa-magnifying-glass" style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);color:var(--surface-muted);font-size:0.875rem"></i>
         <input class="form-input pl-9 w-60"
-               [(ngModel)]="filter"
-               (ngModelChange)="applyFilter()"
+               [ngModel]="filter()"
+               (ngModelChange)="filter.set($event)"
                placeholder="Kennzeichen, Werkstatt...">
       </span>
       <p-button

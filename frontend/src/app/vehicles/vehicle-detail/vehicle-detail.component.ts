@@ -1,86 +1,67 @@
-import { Component, OnInit } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { Component, inject, signal, computed } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { DatePipe, CurrencyPipe } from '@angular/common';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { switchMap, catchError, EMPTY } from 'rxjs';
+import { ButtonModule } from 'primeng/button';
+import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
 import { ApiService } from '../../core/services/api.service';
-import { Vehicle, Invoice, LatestInspections } from '../../core/models/models';
+import { Invoice, LatestInspections } from '../../core/models/models';
 
 @Component({
-  standalone: false,
+  standalone: true,
   selector: 'app-vehicle-detail',
   templateUrl: './vehicle-detail.component.html',
-  styleUrls: ['./vehicle-detail.component.scss'],
+  imports: [RouterLink, DatePipe, CurrencyPipe, ButtonModule, TagModule, TooltipModule],
 })
-export class VehicleDetailComponent implements OnInit {
-  vehicle: Vehicle | null = null;
-  invoices: Invoice[] = [];
-  latestInspections: LatestInspections = {};
-  loading = true;
+export class VehicleDetailComponent {
+  private route  = inject(ActivatedRoute);
+  private router = inject(Router);
+  private api    = inject(ApiService);
 
-  constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private api: ApiService,
-  ) {}
+  private vehicleId = this.route.snapshot.paramMap.get('id')!;
 
-  ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id')!;
-    this.api.getVehicle(id).subscribe({
-      next: v => {
-        this.vehicle = v;
-        this.loadInvoices(id);
-        this.loadInspections(id);
-      },
-      error: () => {
-        this.router.navigate(['/vehicles']);
-      },
-    });
-  }
+  vehicle = toSignal(
+    this.api.getVehicle(this.vehicleId).pipe(
+      catchError(() => { this.router.navigate(['/vehicles']); return EMPTY; }),
+    ),
+  );
 
-  loadInvoices(id: string): void {
-    this.api.getInvoices(id).subscribe(inv => {
-      this.invoices = inv;
-      this.loading = false;
-    });
-  }
+  invoices = toSignal(
+    this.api.getInvoices(this.vehicleId),
+    { initialValue: [] as Invoice[] },
+  );
 
-  loadInspections(id: string): void {
-    this.api.getLatestInspections(id).subscribe(insp => {
-      this.latestInspections = insp;
-    });
-  }
+  latestInspections = toSignal(
+    this.api.getLatestInspections(this.vehicleId),
+    { initialValue: {} as LatestInspections },
+  );
 
-  goToInvoice(inv: Invoice): void {
-    this.router.navigate(['/invoices', inv.id]);
-  }
+  loading    = computed(() => this.vehicle() === undefined);
+  totalCost  = computed(() => this.invoices().reduce((s, i) => s + (Number(i.totalAmount) || 0), 0));
+  anomalyCount = computed(() => this.invoices().filter(i => i.hasAnomalies).length);
+
+  goToInvoice(inv: Invoice): void { this.router.navigate(['/invoices', inv.id]); }
 
   daysUntil(dateStr: string | undefined): number | null {
     if (!dateStr) return null;
-    const due = new Date(dateStr);
-    const today = new Date();
-    return Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000);
   }
 
   inspectionStatusClass(dateStr: string | undefined): string {
     const d = this.daysUntil(dateStr);
     if (d === null) return 'status-unknown';
-    if (d < 0)  return 'status-overdue';
-    if (d <= 30) return 'status-soon';
+    if (d < 0)     return 'status-overdue';
+    if (d <= 30)   return 'status-soon';
     return 'status-ok';
   }
 
   inspectionStatusText(dateStr: string | undefined): string {
     const d = this.daysUntil(dateStr);
     if (d === null) return 'Kein Datum';
-    if (d < 0)  return `${Math.abs(d)} Tage überfällig ⚠️`;
-    if (d === 0) return 'Heute fällig!';
-    if (d <= 30) return `Noch ${d} Tage`;
+    if (d < 0)     return `${Math.abs(d)} Tage überfällig`;
+    if (d === 0)   return 'Heute fällig!';
     return `Noch ${d} Tage`;
-  }
-
-  totalCost(): number {
-    return this.invoices.reduce((sum, inv) => sum + (Number(inv.totalAmount) || 0), 0);
-  }
-
-  anomalyCount(): number {
-    return this.invoices.filter(i => i.hasAnomalies).length;
   }
 }

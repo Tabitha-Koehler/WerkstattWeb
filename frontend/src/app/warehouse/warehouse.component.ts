@@ -1,33 +1,24 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { Router } from '@angular/router';
+import { DatePipe, CurrencyPipe } from '@angular/common';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { TagModule } from 'primeng/tag';
 import { ApiService } from '../core/services/api.service';
 import { Invoice } from '../core/models/models';
 
 @Component({
-  standalone: false,
+  standalone: true,
   selector: 'app-warehouse',
   templateUrl: './warehouse.component.html',
-  styleUrls: ['./warehouse.component.scss'],
+  imports: [DatePipe, CurrencyPipe, TagModule],
 })
-export class WarehouseComponent implements OnInit {
-  invoices: Invoice[] = [];
-  loading = true;
-  displayedColumns = ['invoiceDate', 'workshopName', 'repairContext', 'totalAmount', 'status'];
+export class WarehouseComponent {
+  private api    = inject(ApiService);
+  private router = inject(Router);
 
-  constructor(private api: ApiService, private router: Router) {}
+  invoices  = toSignal(this.api.getInvoices(undefined, true), { initialValue: [] as Invoice[] });
+  loading   = computed(() => this.invoices() === undefined);
+  totalCost = computed(() => this.invoices().reduce((s, i) => s + (Number(i.totalAmount) || 0), 0));
 
-  ngOnInit(): void {
-    this.api.getInvoices(undefined, true).subscribe({
-      next: inv => { this.invoices = inv; this.loading = false; },
-      error: () => { this.loading = false; },
-    });
-  }
-
-  totalCost(): number {
-    return this.invoices.reduce((s, i) => s + (Number(i.totalAmount) || 0), 0);
-  }
-
-  goToDetail(inv: Invoice): void {
-    this.router.navigate(['/invoices', inv.id]);
-  }
+  goToDetail(inv: Invoice): void { this.router.navigate(['/invoices', inv.id]); }
 }
