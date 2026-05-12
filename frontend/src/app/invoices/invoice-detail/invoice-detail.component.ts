@@ -4,6 +4,7 @@ import { ApiService } from '../../core/services/api.service';
 import { Invoice } from '../../core/models/models';
 
 @Component({
+  standalone: false,
   selector: 'app-invoice-detail',
   templateUrl: './invoice-detail.component.html',
   styleUrls: ['./invoice-detail.component.scss'],

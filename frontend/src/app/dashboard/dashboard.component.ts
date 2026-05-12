@@ -3,6 +3,7 @@ import { ApiService } from '../core/services/api.service';
 import { Invoice, InvoiceStats, Inspection } from '../core/models/models';
 
 @Component({
+  standalone: false,
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.scss'],

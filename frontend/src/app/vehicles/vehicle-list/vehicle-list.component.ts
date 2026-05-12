@@ -4,6 +4,7 @@ import { ApiService } from '../../core/services/api.service';
 import { Vehicle } from '../../core/models/models';
 
 @Component({
+  standalone: false,
   selector: 'app-vehicle-list',
   templateUrl: './vehicle-list.component.html',
   styleUrls: ['./vehicle-list.component.scss'],

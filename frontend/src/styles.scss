@@ -1,11 +1,37 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* ── TailwindCSS 4 ─────────────────────────────── */
+@use "tailwindcss";
+
+/* ── Custom Design Tokens ─────────────────────── */
+@theme {
+  --color-primary:         #1d4ed8;
+  --color-primary-light:   #3b82f6;
+  --color-primary-dark:    #1e3a8a;
+  --color-warning:         #ea580c;
+  --color-warning-light:   #fb923c;
+  --color-warning-dark:    #c2410c;
+  --color-success:         #16a34a;
+  --color-success-light:   #4ade80;
+  --color-success-dark:    #15803d;
+  --color-danger:          #dc2626;
+  --color-danger-light:    #f87171;
+  --color-danger-dark:     #b91c1c;
+
+  --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+}
 
 /* ── Globale Basis ─────────────────────────────── */
 html, body {
-  @apply h-full m-0 bg-gray-50 text-gray-900;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  height: 100%;
+  margin: 0;
+  background-color: #f9fafb;
+  color: #111827;
+  font-family: var(--font-family-sans);
+}
+
+/* ── PrimeNG + Tailwind Konflikt-Auflösung ────── */
+/* PrimeNG-Komponenten sollen Tailwind-Base nicht überschreiben */
+.p-component {
+  font-family: var(--font-family-sans);
 }
 
 /* ── Wiederverwendbare Komponenten ─────────────── */
@@ -16,22 +42,23 @@ html, body {
     @apply bg-white rounded-xl shadow-sm border border-gray-200 p-5;
   }
 
-  /* Buttons */
+  /* Buttons (Fallback ohne PrimeNG) */
   .btn {
     @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
-           transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1;
+           transition-colors cursor-pointer border-0;
   }
   .btn-primary {
-    @apply btn bg-blue-700 text-white hover:bg-blue-800 focus:ring-blue-500;
+    @apply btn bg-blue-700 text-white hover:bg-blue-800;
   }
   .btn-secondary {
-    @apply btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50 focus:ring-gray-400;
+    @apply btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50;
   }
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+    @apply btn bg-red-600 text-white hover:bg-red-700;
   }
   .btn-icon {
-    @apply p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors;
+    @apply p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors cursor-pointer
+           border-0 bg-transparent;
   }
 
   /* Tabellen */
@@ -53,13 +80,13 @@ html, body {
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
-  .badge-sp  { @apply badge bg-blue-100   text-blue-800;   }
-  .badge-hu  { @apply badge bg-green-100  text-green-800;  }
-  .badge-au  { @apply badge bg-purple-100 text-purple-800; }
-  .badge-ok      { @apply badge bg-green-100  text-green-800; }
+  .badge-sp      { @apply badge bg-blue-100   text-blue-800;   }
+  .badge-hu      { @apply badge bg-green-100  text-green-800;  }
+  .badge-au      { @apply badge bg-purple-100 text-purple-800; }
+  .badge-ok      { @apply badge bg-green-100  text-green-800;  }
   .badge-warning { @apply badge bg-orange-100 text-orange-800; }
-  .badge-error   { @apply badge bg-red-100    text-red-800;   }
-  .badge-gray    { @apply badge bg-gray-100   text-gray-600;  }
+  .badge-error   { @apply badge bg-red-100    text-red-800;    }
+  .badge-gray    { @apply badge bg-gray-100   text-gray-600;   }
 
   /* Formfelder */
   .form-label {

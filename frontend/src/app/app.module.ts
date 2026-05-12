@@ -1,9 +1,32 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-import { HttpClientModule } from '@angular/common/http';
+import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
+import { provideHttpClient, withFetch } from '@angular/common/http';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { providePrimeNG } from 'primeng/config';
+import Aura from '@primeng/themes/aura';
 
+// PrimeNG Module
+import { ButtonModule }       from 'primeng/button';
+import { CardModule }         from 'primeng/card';
+import { TableModule }        from 'primeng/table';
+import { TagModule }          from 'primeng/tag';
+import { BadgeModule }        from 'primeng/badge';
+import { ProgressBarModule }  from 'primeng/progressbar';
+import { InputTextModule }    from 'primeng/inputtext';
+import { DialogModule }       from 'primeng/dialog';
+import { ToastModule }        from 'primeng/toast';
+import { ToolbarModule }      from 'primeng/toolbar';
+import { ConfirmDialogModule } from 'primeng/confirmdialog';
+import { IconFieldModule }    from 'primeng/iconfield';
+import { InputIconModule }    from 'primeng/inputicon';
+import { MessageService, ConfirmationService } from 'primeng/api';
+
+// ng2-pdf-viewer
+import { PdfViewerModule } from 'ng2-pdf-viewer';
+
+// App Komponenten
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 import { DashboardComponent } from './dashboard/dashboard.component';
@@ -15,7 +38,6 @@ import { InvoiceDetailComponent } from './invoices/invoice-detail/invoice-detail
 import { WarehouseComponent } from './warehouse/warehouse.component';
 import { UploadComponent } from './upload/upload.component';
 import { InspectionStatusComponent } from './shared/inspection-status/inspection-status.component';
-import { PdfViewerModule } from 'ng2-pdf-viewer';
 
 @NgModule({
   declarations: [
@@ -32,12 +54,37 @@ import { PdfViewerModule } from 'ng2-pdf-viewer';
   ],
   imports: [
     BrowserModule,
-    HttpClientModule,
+    BrowserAnimationsModule,
     FormsModule,
     ReactiveFormsModule,
     RouterModule,
     AppRoutingModule,
     PdfViewerModule,
+    // PrimeNG
+    ButtonModule,
+    CardModule,
+    TableModule,
+    TagModule,
+    BadgeModule,
+    ProgressBarModule,
+    InputTextModule,
+    DialogModule,
+    ToastModule,
+    ToolbarModule,
+    ConfirmDialogModule,
+    IconFieldModule,
+    InputIconModule,
+  ],
+  providers: [
+    provideHttpClient(withFetch()),
+    providePrimeNG({
+      theme: {
+        preset: Aura,
+        options: { darkModeSelector: false },
+      },
+    }),
+    MessageService,
+    ConfirmationService,
   ],
   bootstrap: [AppComponent],
 })

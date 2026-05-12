@@ -11,6 +11,7 @@ interface UploadItem {
 }
 
 @Component({
+  standalone: false,
   selector: 'app-upload',
   templateUrl: './upload.component.html',
   styleUrls: ['./upload.component.scss'],

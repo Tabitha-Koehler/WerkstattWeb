@@ -3,6 +3,7 @@ import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Vehicle } from '../../core/models/models';
 
 @Component({
+  standalone: false,
   selector: 'app-vehicle-dialog',
   template: `
     <!-- Backdrop -->

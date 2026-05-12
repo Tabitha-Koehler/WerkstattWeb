@@ -4,6 +4,7 @@ import { ApiService } from '../../core/services/api.service';
 import { Vehicle, Invoice, LatestInspections } from '../../core/models/models';
 
 @Component({
+  standalone: false,
   selector: 'app-vehicle-detail',
   templateUrl: './vehicle-detail.component.html',
   styleUrls: ['./vehicle-detail.component.scss'],

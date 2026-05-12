@@ -2,6 +2,7 @@ import { Component, Input } from '@angular/core';
 import { Inspection } from '../../core/models/models';
 
 @Component({
+  standalone: false,
   selector: 'app-inspection-status',
   template: `
     <div *ngIf="inspection; else noData">

@@ -1,28 +1,69 @@
 services:
-  postgres:
+
+  db:
     image: postgres:16-alpine
     container_name: werkstattweb-db
     environment:
       POSTGRES_DB: werkstattweb
       POSTGRES_USER: werkstatt
       POSTGRES_PASSWORD: werkstatt2024
-    ports:
-      - '5432:5432'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - werkstatt-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U werkstatt -d werkstattweb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: werkstattweb-pgadmin
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: werkstattweb-backend
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@werkstatt.de
-      PGADMIN_DEFAULT_PASSWORD: admin
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_USERNAME: werkstatt
+      DB_PASSWORD: werkstatt2024
+      DB_NAME: werkstattweb
+      OLLAMA_URL: http://host-gateway:11434
+      OLLAMA_MODEL: llama3.2
+      WATCH_FOLDER: /data/rechnungen_pdf
+      PORT: "3000"
     ports:
-      - '5050:80'
+      - "3000:3000"
+    volumes:
+      - ./rechnungen_pdf:/data/rechnungen_pdf:ro
+      - uploads_data:/app/uploads
     depends_on:
-      - postgres
+      db:
+        condition: service_healthy
+    networks:
+      - werkstatt-net
+    restart: unless-stopped
+    extra_hosts:
+      - "host-gateway:host-gateway"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: werkstattweb-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - werkstatt-net
     restart: unless-stopped
 
 volumes:
-  postgres_data:
+  pgdata:
+  uploads_data:
+
+networks:
+  werkstatt-net:
+    driver: bridge

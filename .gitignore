@@ -86,3 +86,4 @@ temp/
 # ── Datenbank ──────────────────────────────────
 # setup-db.js / setup-db.bat bleiben versioniert
 *.pgdump
+.claude/worktrees/
