@@ -58,6 +58,17 @@ export class InvoiceDetailComponent implements OnInit {
     return this.invoice?.operatingSupplies ?? [];
   }
 
+  detailRows(): Array<{ label: string; value: string }> {
+    if (!this.invoice) return [];
+    return [
+      { label: 'Werkstatt',     value: this.invoice.workshopName ?? '–' },
+      { label: 'Rechnungs-Nr.', value: this.invoice.invoiceNumber ?? '–' },
+      { label: 'Datum',         value: new Date(this.invoice.invoiceDate).toLocaleDateString('de-DE') },
+      { label: 'Kennzeichen',   value: this.invoice.vehicle?.licensePlate ?? 'Lager' },
+      { label: 'Reparatur',     value: this.invoice.repairContext ?? '–' },
+    ];
+  }
+
   deleteInvoice(): void {
     if (!confirm('Rechnung wirklich löschen?')) return;
     this.api.deleteInvoice(this.invoice!.id).subscribe({

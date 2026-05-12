@@ -9,7 +9,8 @@
       "Bash(npm install *)",
       "Bash(npx ng *)",
       "Bash(docker compose *)",
-      "Bash(xargs grep -l \"standalone\")"
+      "Bash(xargs grep -l \"standalone\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/)"
     ]
   }
 }

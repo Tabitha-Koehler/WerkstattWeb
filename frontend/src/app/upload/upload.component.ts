@@ -72,4 +72,20 @@ export class UploadComponent {
   pendingCount(): number { return this.queue.filter(i => i.status === 'pending').length; }
   doneCount(): number   { return this.queue.filter(i => i.status === 'done').length; }
   errorCount(): number  { return this.queue.filter(i => i.status === 'error').length; }
+
+  statusIconClass(status: string, hasAnomalies?: boolean): string {
+    if (status === 'pending')   return 'bg-slate-100 text-slate-400 dark:bg-slate-700';
+    if (status === 'uploading') return 'bg-blue-100 text-blue-600 dark:bg-blue-900/40';
+    if (status === 'error')     return 'bg-red-100 text-red-600 dark:bg-red-900/40';
+    if (status === 'done' && hasAnomalies) return 'bg-amber-100 text-amber-600';
+    return 'bg-emerald-100 text-emerald-600';
+  }
+
+  statusPiIcon(status: string, hasAnomalies?: boolean): string {
+    if (status === 'pending')   return 'pi pi-clock';
+    if (status === 'uploading') return 'pi pi-spin pi-spinner';
+    if (status === 'error')     return 'pi pi-times-circle';
+    if (status === 'done' && hasAnomalies) return 'pi pi-exclamation-triangle';
+    return 'pi pi-check-circle';
+  }
 }

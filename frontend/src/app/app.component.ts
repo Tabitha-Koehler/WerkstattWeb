@@ -1,5 +1,11 @@
 import { Component } from '@angular/core';
-import { Router } from '@angular/router';
+import { ThemeService } from './core/services/theme.service';
+
+interface NavItem {
+  path: string;
+  icon: string;
+  label: string;
+}
 
 @Component({
   standalone: false,
@@ -8,15 +14,13 @@ import { Router } from '@angular/router';
   styleUrls: ['./app.component.scss'],
 })
 export class AppComponent {
-  title = 'WerkstattWeb';
-
-  navItems = [
-    { path: '/dashboard', icon: 'dashboard',      label: 'Dashboard'     },
-    { path: '/vehicles',  icon: 'local_shipping',  label: 'Fahrzeuge'     },
-    { path: '/invoices',  icon: 'receipt_long',    label: 'Rechnungen'    },
-    { path: '/warehouse', icon: 'warehouse',        label: 'Lager'         },
-    { path: '/upload',    icon: 'upload_file',      label: 'Hochladen'     },
+  readonly navItems: NavItem[] = [
+    { path: '/dashboard', icon: '▦',  label: 'Dashboard'  },
+    { path: '/vehicles',  icon: '🚛', label: 'Fahrzeuge'  },
+    { path: '/invoices',  icon: '🧾', label: 'Rechnungen' },
+    { path: '/warehouse', icon: '🏭', label: 'Lager'      },
+    { path: '/upload',    icon: '⬆️', label: 'Hochladen'  },
   ];
 
-  constructor(public router: Router) {}
+  constructor(public theme: ThemeService) {}
 }

@@ -1,97 +1,154 @@
 <div class="space-y-6">
-  <h1 class="text-2xl font-bold text-gray-900">Dashboard</h1>
 
-  <!-- Laden -->
+  <!-- Page header -->
+  <div>
+    <h1 class="page-title">Dashboard</h1>
+    <p class="page-subtitle">Übersicht der Werkstattabrechnungen</p>
+  </div>
+
+  <!-- Loading -->
   <div *ngIf="loading" class="flex justify-center py-20">
-    <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    <div class="spinner"></div>
   </div>
 
   <ng-container *ngIf="!loading">
 
-    <!-- Statistik-Karten -->
+    <!-- Stat cards -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="card text-center">
-        <div class="text-3xl font-bold text-blue-700">{{ stats?.total ?? 0 }}</div>
-        <div class="text-sm text-gray-500 mt-1">Rechnungen gesamt</div>
+
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <span class="section-title">Rechnungen</span>
+          <span class="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center text-sm dark:bg-blue-500/20 dark:text-blue-400">🧾</span>
+        </div>
+        <div class="stat-card-value text-blue-600 dark:text-blue-400">{{ stats?.total ?? 0 }}</div>
+        <div class="stat-card-label">Gesamt</div>
       </div>
-      <div class="card text-center" [class.border-orange-400]="(stats?.withAnomalies ?? 0) > 0">
-        <div class="text-3xl font-bold" [class.text-orange-600]="(stats?.withAnomalies ?? 0) > 0" [class.text-gray-400]="(stats?.withAnomalies ?? 0) === 0">
+
+      <div class="stat-card" [class.border-amber-400]="(stats?.withAnomalies ?? 0) > 0">
+        <div class="flex items-center justify-between mb-3">
+          <span class="section-title">Warnungen</span>
+          <span class="w-9 h-9 rounded-xl flex items-center justify-center text-sm"
+                [class]="(stats?.withAnomalies ?? 0) > 0 ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-700'">⚠️</span>
+        </div>
+        <div class="stat-card-value" [class]="(stats?.withAnomalies ?? 0) > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'">
           {{ stats?.withAnomalies ?? 0 }}
         </div>
-        <div class="text-sm text-gray-500 mt-1">Mit Warnungen</div>
+        <div class="stat-card-label">Anomalien</div>
       </div>
-      <div class="card text-center">
-        <div class="text-3xl font-bold text-purple-700">{{ stats?.warehouse ?? 0 }}</div>
-        <div class="text-sm text-gray-500 mt-1">Lagerrechnungen</div>
+
+      <div class="stat-card">
+        <div class="flex items-center justify-between mb-3">
+          <span class="section-title">Lager</span>
+          <span class="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center text-sm dark:bg-violet-500/20 dark:text-violet-400">🏭</span>
+        </div>
+        <div class="stat-card-value text-violet-600 dark:text-violet-400">{{ stats?.warehouse ?? 0 }}</div>
+        <div class="stat-card-label">Lagerrechnungen</div>
       </div>
-      <div class="card text-center" *ngIf="(stats?.errors ?? 0) > 0" style="border-left:4px solid #dc2626;">
-        <div class="text-3xl font-bold text-red-600">{{ stats?.errors }}</div>
-        <div class="text-sm text-gray-500 mt-1">Fehler</div>
+
+      <div class="stat-card" [class.border-l-4]="(stats?.errors ?? 0) > 0" [class.border-red-500]="(stats?.errors ?? 0) > 0">
+        <div class="flex items-center justify-between mb-3">
+          <span class="section-title">Fehler</span>
+          <span class="w-9 h-9 rounded-xl flex items-center justify-center text-sm"
+                [class]="(stats?.errors ?? 0) > 0 ? 'bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-700'">❌</span>
+        </div>
+        <div class="stat-card-value" [class]="(stats?.errors ?? 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400'">
+          {{ stats?.errors ?? 0 }}
+        </div>
+        <div class="stat-card-label">Verarbeitungsfehler</div>
       </div>
+
     </div>
 
-    <!-- Überfällige Prüfungen -->
+    <!-- Overdue inspections -->
     <div *ngIf="overdueInspections.length > 0" class="card border-l-4 border-red-500">
-      <h2 class="font-semibold text-red-700 mb-3 flex items-center gap-2">
-        🔴 Überfällige Prüfungen ({{ overdueInspections.length }})
-      </h2>
-      <div class="space-y-2">
-        <a *ngFor="let insp of overdueInspections"
-           [routerLink]="['/vehicles', insp.vehicleId]"
-           class="flex items-center justify-between p-3 bg-red-50 rounded-lg hover:bg-red-100 transition-colors">
-          <div class="flex items-center gap-3">
-            <span class="badge-{{ insp.type.toLowerCase() }}">{{ insp.type }}</span>
-            <span class="font-semibold text-sm">{{ insp.vehicle?.licensePlate }}</span>
-          </div>
-          <span class="status-overdue text-sm">Fällig: {{ insp.nextDueDate | date:'dd.MM.yyyy' }}
-            ({{ daysUntil(insp.nextDueDate!) * -1 }} Tage)</span>
-        </a>
+      <div class="flex items-center gap-2 mb-4">
+        <span class="text-red-500">🔴</span>
+        <h2 class="font-semibold" style="color:var(--surface-text)">Überfällige Prüfungen</h2>
+        <span class="badge-error ml-1">{{ overdueInspections.length }}</span>
       </div>
-    </div>
-
-    <!-- Bald fällige Prüfungen -->
-    <div *ngIf="upcomingInspections.length > 0" class="card">
-      <h2 class="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-        🟠 Demnächst fällig (60 Tage)
-      </h2>
       <div class="space-y-2">
-        <a *ngFor="let insp of upcomingInspections"
-           [routerLink]="['/vehicles', insp.vehicleId]"
-           class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+        <a *ngFor="let item of overdueInspections"
+           [routerLink]="['/vehicles', item.vehicleId]"
+           class="flex items-center justify-between p-3 rounded-xl transition-colors no-underline"
+           style="background:rgb(239 68 68 / 0.06); border:1px solid rgb(239 68 68 / 0.15)"
+           onmouseenter="this.style.background='rgb(239 68 68 / 0.12)'"
+           onmouseleave="this.style.background='rgb(239 68 68 / 0.06)'">
           <div class="flex items-center gap-3">
-            <span class="badge-{{ insp.type.toLowerCase() }}">{{ insp.type }}</span>
-            <span class="font-semibold text-sm">{{ insp.vehicle?.licensePlate }}</span>
+            <span class="badge-{{ item.type.toLowerCase() }}">{{ item.type }}</span>
+            <span class="font-semibold text-sm" style="color:var(--surface-text)">{{ item.vehicle?.licensePlate }}</span>
           </div>
-          <span class="text-sm" [class]="inspectionClass(insp.nextDueDate!)">
-            Fällig: {{ insp.nextDueDate | date:'dd.MM.yyyy' }} (noch {{ daysUntil(insp.nextDueDate!) }} Tage)
+          <span class="status-overdue text-xs">
+            Fällig: {{ item.nextDueDate | date:'dd.MM.yyyy' }}
+            ({{ daysUntil(item.nextDueDate!) * -1 }} Tage überfällig)
           </span>
         </a>
       </div>
     </div>
 
-    <!-- Letzte Rechnungen -->
-    <div class="card">
-      <div class="flex items-center justify-between mb-4">
-        <h2 class="font-semibold text-gray-800">Zuletzt verarbeitet</h2>
-        <a routerLink="/invoices" class="text-sm text-blue-600 hover:underline">Alle anzeigen →</a>
+    <!-- Upcoming inspections -->
+    <div *ngIf="upcomingInspections.length > 0" class="card">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="text-amber-500">🟠</span>
+        <h2 class="font-semibold" style="color:var(--surface-text)">Demnächst fällig</h2>
+        <span class="badge-warning ml-1">{{ upcomingInspections.length }}</span>
+        <span class="text-xs ml-auto" style="color:var(--surface-muted)">innerhalb 60 Tage</span>
       </div>
       <div class="space-y-2">
+        <a *ngFor="let item of upcomingInspections"
+           [routerLink]="['/vehicles', item.vehicleId]"
+           class="flex items-center justify-between p-3 rounded-xl transition-colors no-underline"
+           style="background:var(--surface-hover); border:1px solid var(--surface-border)"
+           onmouseenter="this.style.background='var(--surface-border)'"
+           onmouseleave="this.style.background='var(--surface-hover)'">
+          <div class="flex items-center gap-3">
+            <span class="badge-{{ item.type.toLowerCase() }}">{{ item.type }}</span>
+            <span class="font-semibold text-sm" style="color:var(--surface-text)">{{ item.vehicle?.licensePlate }}</span>
+          </div>
+          <span class="text-xs" [class]="inspectionClass(item.nextDueDate!)">
+            {{ item.nextDueDate | date:'dd.MM.yyyy' }} · noch {{ daysUntil(item.nextDueDate!) }} Tage
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Recent invoices -->
+    <div class="card">
+      <div class="card-header -mx-5 -mt-5 mb-5 px-5 py-4 rounded-t-[0.875rem]">
+        <h2 class="font-semibold text-sm" style="color:var(--surface-text)">Zuletzt verarbeitet</h2>
+        <a routerLink="/invoices"
+           class="text-xs font-medium text-blue-600 hover:text-blue-500 dark:text-blue-400 no-underline">
+          Alle anzeigen →
+        </a>
+      </div>
+      <div class="space-y-1">
         <a *ngFor="let inv of recentInvoices"
            [routerLink]="['/invoices', inv.id]"
-           class="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-50 transition-colors">
-          <span class="text-xl">{{ inv.hasAnomalies ? '⚠️' : '✅' }}</span>
+           class="flex items-center gap-4 px-2 py-2.5 rounded-lg transition-colors no-underline"
+           style="color:var(--surface-text)"
+           onmouseenter="this.style.background='var(--surface-hover)'"
+           onmouseleave="this.style.background='transparent'">
+          <span class="w-8 h-8 rounded-lg flex items-center justify-center text-sm shrink-0"
+                [class]="inv.hasAnomalies ? 'bg-amber-100 dark:bg-amber-900/40' : 'bg-emerald-100 dark:bg-emerald-900/40'">
+            {{ inv.hasAnomalies ? '⚠️' : '✓' }}
+          </span>
           <div class="flex-1 min-w-0">
-            <div class="font-medium text-sm">{{ inv.vehicle?.licensePlate ?? 'Lager' }} – {{ inv.workshopName ?? '–' }}</div>
-            <div class="text-xs text-gray-400 truncate">{{ inv.repairContext ?? '–' }}</div>
+            <div class="font-medium text-sm truncate">
+              {{ inv.vehicle?.licensePlate ?? 'Lager' }} – {{ inv.workshopName ?? '–' }}
+            </div>
+            <div class="text-xs truncate" style="color:var(--surface-muted)">{{ inv.repairContext ?? '–' }}</div>
           </div>
-          <div class="text-sm font-semibold text-gray-700 shrink-0">
+          <div class="text-sm font-semibold shrink-0" style="color:var(--surface-text)">
             {{ inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}
           </div>
-          <div class="text-xs text-gray-400 shrink-0">{{ inv.createdAt | date:'dd.MM.yy' }}</div>
+          <div class="text-xs shrink-0" style="color:var(--surface-muted)">
+            {{ inv.createdAt | date:'dd.MM.yy' }}
+          </div>
         </a>
-        <p *ngIf="recentInvoices.length === 0" class="text-sm text-gray-400 py-4 text-center">
-          Noch keine Rechnungen vorhanden
-        </p>
+        <div *ngIf="recentInvoices.length === 0" class="empty-state py-8">
+          <span class="text-3xl">🧾</span>
+          <p class="text-sm">Noch keine Rechnungen vorhanden</p>
+        </div>
       </div>
     </div>
 

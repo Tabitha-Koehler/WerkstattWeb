@@ -80,7 +80,10 @@ import { InspectionStatusComponent } from './shared/inspection-status/inspection
     providePrimeNG({
       theme: {
         preset: Aura,
-        options: { darkModeSelector: false },
+        options: {
+          darkModeSelector: '.dark',
+          cssLayer: { name: 'primeng', order: 'tailwind-base, primeng, tailwind-utilities' },
+        },
       },
     }),
     MessageService,

@@ -1,42 +1,67 @@
-<div class="space-y-4">
+<div class="space-y-5">
+
+  <!-- Header -->
   <div class="flex items-center justify-between">
-    <h1 class="text-2xl font-bold text-gray-900">Fahrzeuge</h1>
-    <button class="btn-primary" (click)="openDialog()">➕ Fahrzeug hinzufügen</button>
+    <div>
+      <h1 class="page-title">Fahrzeuge</h1>
+      <p class="page-subtitle">Fuhrpark der Spedition</p>
+    </div>
+    <p-button label="Fahrzeug hinzufügen" icon="pi pi-plus" (click)="openDialog()" />
   </div>
 
-  <div *ngIf="errorMsg" class="warning-banner">⚠️ {{ errorMsg }}</div>
+  <!-- Error -->
+  <div *ngIf="errorMsg" class="banner-error">⚠️ {{ errorMsg }}</div>
 
+  <!-- Loading -->
   <div *ngIf="loading" class="flex justify-center py-20">
-    <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    <div class="spinner"></div>
   </div>
 
+  <!-- Table card -->
   <div *ngIf="!loading" class="card p-0 overflow-hidden">
-    <table class="table-auto w-full">
-      <thead><tr>
-        <th>Kennzeichen</th><th>Typ</th><th>Hersteller</th><th>Modell</th><th>Baujahr</th><th></th>
-      </tr></thead>
+    <table class="data-table w-full">
+      <thead>
+        <tr>
+          <th>Kennzeichen</th>
+          <th>Typ</th>
+          <th>Hersteller</th>
+          <th>Modell</th>
+          <th>Baujahr</th>
+          <th class="text-right pr-4">Aktionen</th>
+        </tr>
+      </thead>
       <tbody>
         <tr *ngFor="let v of vehicles" (click)="goToDetail(v)">
-          <td><span class="font-bold text-blue-700">{{ v.licensePlate }}</span></td>
-          <td>{{ v.vehicleType ?? '–' }}</td>
-          <td>{{ v.manufacturer ?? '–' }}</td>
-          <td>{{ v.model ?? '–' }}</td>
-          <td>{{ v.year ?? '–' }}</td>
-          <td class="text-right" (click)="$event.stopPropagation()">
-            <button class="btn-icon" (click)="openDialog(v)" title="Bearbeiten">✏️</button>
-            <button class="btn-icon" (click)="delete(v, $event)" title="Löschen">🗑️</button>
+          <td>
+            <span class="inline-flex items-center gap-2">
+              <span class="font-bold text-blue-600 dark:text-blue-400">{{ v.licensePlate }}</span>
+            </span>
+          </td>
+          <td>
+            <span class="badge-gray">{{ v.vehicleType ?? '–' }}</span>
+          </td>
+          <td class="font-medium">{{ v.manufacturer ?? '–' }}</td>
+          <td style="color:var(--surface-muted)">{{ v.model ?? '–' }}</td>
+          <td style="color:var(--surface-muted)">{{ v.year ?? '–' }}</td>
+          <td class="text-right pr-4" (click)="$event.stopPropagation()">
+            <p-button icon="pi pi-pencil" [text]="true" [rounded]="true" severity="secondary" size="small"
+                      (click)="openDialog(v)" pTooltip="Bearbeiten" />
+            <p-button icon="pi pi-trash" [text]="true" [rounded]="true" severity="danger" size="small"
+                      (click)="delete(v, $event)" pTooltip="Löschen" />
           </td>
         </tr>
       </tbody>
     </table>
-    <div *ngIf="vehicles.length === 0" class="py-16 text-center text-gray-400">
-      <div class="text-4xl mb-3">🚛</div>
-      <p>Noch keine Fahrzeuge. Rechnungen werden automatisch erkannt.</p>
+
+    <div *ngIf="vehicles.length === 0" class="empty-state">
+      <span class="text-5xl">🚛</span>
+      <p class="font-medium">Noch keine Fahrzeuge</p>
+      <p class="text-sm">Rechnungen mit Kennzeichen werden automatisch erkannt.</p>
     </div>
   </div>
 </div>
 
-<!-- Dialog -->
+<!-- Vehicle Dialog -->
 <app-vehicle-dialog
   *ngIf="dialogOpen"
   [vehicle]="editingVehicle"

@@ -1,44 +1,79 @@
-<div class="space-y-4">
+<div class="space-y-5">
+
+  <!-- Header -->
   <div class="flex flex-wrap items-center gap-3 justify-between">
-    <h1 class="text-2xl font-bold text-gray-900">Rechnungen</h1>
+    <div>
+      <h1 class="page-title">Rechnungen</h1>
+      <p class="page-subtitle">Alle Werkstattrechnungen</p>
+    </div>
     <div class="flex items-center gap-2">
-      <input class="form-input w-64" [(ngModel)]="filter" (ngModelChange)="applyFilter()"
-             placeholder="🔍 Kennzeichen, Werkstatt...">
-      <button class="btn-secondary" [class.bg-orange-100]="showOnlyAnomalies" (click)="toggleAnomalies()">
-        ⚠️ {{ showOnlyAnomalies ? 'Alle' : 'Nur Warnungen' }}
-      </button>
-      <a routerLink="/upload" class="btn-primary">⬆️ Hochladen</a>
+      <span class="p-input-icon-left" style="position:relative">
+        <i class="pi pi-search" style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);color:var(--surface-muted);font-size:0.875rem"></i>
+        <input class="form-input pl-9 w-60"
+               [(ngModel)]="filter"
+               (ngModelChange)="applyFilter()"
+               placeholder="Kennzeichen, Werkstatt...">
+      </span>
+      <p-button
+        [label]="showOnlyAnomalies ? 'Alle anzeigen' : 'Nur Warnungen'"
+        icon="pi pi-exclamation-triangle"
+        [severity]="showOnlyAnomalies ? 'warn' : 'secondary'"
+        [outlined]="!showOnlyAnomalies"
+        (click)="toggleAnomalies()" />
+      <p-button label="Hochladen" icon="pi pi-upload" routerLink="/upload" />
     </div>
   </div>
 
+  <!-- Loading -->
   <div *ngIf="loading" class="flex justify-center py-20">
-    <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    <div class="spinner"></div>
   </div>
 
+  <!-- Table -->
   <div *ngIf="!loading" class="card p-0 overflow-hidden">
-    <table class="table-auto w-full">
-      <thead><tr>
-        <th>Datum</th><th>Kennzeichen</th><th>Werkstatt</th><th>Reparatur</th>
-        <th class="text-right">Betrag</th><th>Status</th>
-      </tr></thead>
+    <table class="data-table w-full">
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Kennzeichen</th>
+          <th>Werkstatt</th>
+          <th>Reparatur</th>
+          <th class="text-right">Betrag</th>
+          <th>Status</th>
+        </tr>
+      </thead>
       <tbody>
-        <tr *ngFor="let inv of filteredInvoices" (click)="goToDetail(inv)" [class.anomaly-row]="inv.hasAnomalies">
-          <td class="text-sm whitespace-nowrap">{{ inv.invoiceDate | date:'dd.MM.yyyy' }}</td>
-          <td><span class="font-bold text-blue-700">{{ inv.vehicle?.licensePlate ?? '–' }}</span></td>
-          <td class="text-sm">{{ inv.workshopName ?? '–' }}</td>
-          <td class="text-sm max-w-xs truncate">{{ inv.repairContext ?? '–' }}</td>
-          <td class="text-sm text-right font-medium whitespace-nowrap">{{ inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}</td>
+        <tr *ngFor="let inv of filteredInvoices"
+            (click)="goToDetail(inv)"
+            [class.anomaly-row]="inv.hasAnomalies">
+          <td class="whitespace-nowrap" style="color:var(--surface-muted)">
+            {{ inv.invoiceDate | date:'dd.MM.yyyy' }}
+          </td>
           <td>
-            <span *ngIf="inv.hasAnomalies"  class="badge-warning">⚠️ Warnung</span>
-            <span *ngIf="inv.processingError" class="badge-error">Fehler</span>
-            <span *ngIf="!inv.hasAnomalies && !inv.processingError" class="badge-ok">✓ OK</span>
+            <span class="font-bold text-blue-600 dark:text-blue-400">
+              {{ inv.vehicle?.licensePlate ?? '–' }}
+            </span>
+          </td>
+          <td>{{ inv.workshopName ?? '–' }}</td>
+          <td class="max-w-xs truncate" style="color:var(--surface-muted)">
+            {{ inv.repairContext ?? '–' }}
+          </td>
+          <td class="text-right font-semibold whitespace-nowrap">
+            {{ inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}
+          </td>
+          <td>
+            <p-tag *ngIf="inv.hasAnomalies"    severity="warn"    value="Warnung" icon="pi pi-exclamation-triangle" />
+            <p-tag *ngIf="inv.processingError" severity="danger"  value="Fehler"  icon="pi pi-times-circle" />
+            <p-tag *ngIf="!inv.hasAnomalies && !inv.processingError" severity="success" value="OK" icon="pi pi-check" />
           </td>
         </tr>
       </tbody>
     </table>
-    <div *ngIf="filteredInvoices.length === 0" class="py-16 text-center text-gray-400">
-      <div class="text-4xl mb-3">🧾</div>
-      <p>Keine Rechnungen gefunden.</p>
+
+    <div *ngIf="filteredInvoices.length === 0" class="empty-state">
+      <span class="text-5xl">🧾</span>
+      <p class="font-medium">Keine Rechnungen gefunden</p>
+      <p class="text-sm">Versuche den Filter anzupassen.</p>
     </div>
   </div>
 </div>

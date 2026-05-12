@@ -1,90 +1,122 @@
 <div *ngIf="loading" class="flex justify-center py-20">
-  <div class="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+  <div class="spinner"></div>
 </div>
 
 <ng-container *ngIf="!loading && vehicle">
-  <!-- Kopfzeile -->
-  <div class="flex items-center gap-3 mb-6">
-    <a routerLink="/vehicles" class="btn-icon">←</a>
-    <span class="text-3xl">🚛</span>
-    <div>
-      <h1 class="text-2xl font-bold text-blue-700">{{ vehicle.licensePlate }}</h1>
-      <p class="text-sm text-gray-500">{{ vehicle.vehicleType }} {{ vehicle.manufacturer }} {{ vehicle.model }} {{ vehicle.year }}</p>
+
+  <!-- Header -->
+  <div class="flex items-center gap-4 mb-6">
+    <p-button icon="pi pi-arrow-left" [text]="true" [rounded]="true" severity="secondary" routerLink="/vehicles" />
+    <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-xl shadow-md">
+      🚛
     </div>
-    <div class="flex-1"></div>
-    <a routerLink="/upload" class="btn-secondary">⬆️ Rechnung hochladen</a>
+    <div class="flex-1 min-w-0">
+      <h1 class="page-title text-blue-600 dark:text-blue-400">{{ vehicle.licensePlate }}</h1>
+      <p class="page-subtitle">
+        {{ vehicle.vehicleType ?? '' }} {{ vehicle.manufacturer ?? '' }} {{ vehicle.model ?? '' }}
+        <span *ngIf="vehicle.year">· {{ vehicle.year }}</span>
+      </p>
+    </div>
+    <p-button label="Rechnung hochladen" icon="pi pi-upload" severity="secondary" [outlined]="true" routerLink="/upload" />
   </div>
 
-  <!-- Statistik -->
+  <!-- Stats -->
   <div class="grid grid-cols-3 gap-4 mb-6">
-    <div class="card text-center">
-      <div class="text-3xl font-bold text-blue-700">{{ invoices.length }}</div>
-      <div class="text-sm text-gray-500">Rechnungen</div>
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-2">
+        <span class="section-title">Rechnungen</span>
+        <span class="text-lg">🧾</span>
+      </div>
+      <div class="stat-card-value text-blue-600 dark:text-blue-400">{{ invoices.length }}</div>
+      <div class="stat-card-label">Gesamt</div>
     </div>
-    <div class="card text-center">
-      <div class="text-3xl font-bold text-green-700">{{ totalCost() | currency:'EUR':'symbol':'1.2-2':'de' }}</div>
-      <div class="text-sm text-gray-500">Gesamtkosten</div>
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-2">
+        <span class="section-title">Kosten</span>
+        <span class="text-lg">💶</span>
+      </div>
+      <div class="stat-card-value text-emerald-600 dark:text-emerald-400 text-2xl">
+        {{ totalCost() | currency:'EUR':'symbol':'1.2-2':'de' }}
+      </div>
+      <div class="stat-card-label">Gesamt</div>
     </div>
-    <div class="card text-center" [class.border-l-4]="anomalyCount()>0" [class.border-orange-400]="anomalyCount()>0">
-      <div class="text-3xl font-bold" [class.text-orange-600]="anomalyCount()>0" [class.text-gray-400]="anomalyCount()===0">{{ anomalyCount() }}</div>
-      <div class="text-sm text-gray-500">Warnungen</div>
+    <div class="stat-card" [class.border-l-4]="anomalyCount()>0" [class.border-amber-400]="anomalyCount()>0">
+      <div class="flex items-center justify-between mb-2">
+        <span class="section-title">Warnungen</span>
+        <span class="text-lg">⚠️</span>
+      </div>
+      <div class="stat-card-value" [class]="anomalyCount()>0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'">
+        {{ anomalyCount() }}
+      </div>
+      <div class="stat-card-label">Anomalien</div>
     </div>
   </div>
 
-  <!-- SP / HU / AU -->
+  <!-- Inspection status SP/HU/AU -->
   <div class="card mb-6">
-    <h2 class="font-semibold text-gray-800 mb-4">📋 Prüfungsstatus</h2>
+    <h2 class="section-title mb-4">Prüfungsstatus</h2>
     <div class="grid grid-cols-3 gap-4">
       <div *ngFor="let type of ['SP','HU','AU']"
-           class="border border-gray-200 rounded-xl p-4 text-center">
-        <span class="badge-{{ type.toLowerCase() }} text-base px-4 py-1">{{ type }}</span>
-        <ng-container *ngIf="latestInspections[type]; else noInsp">
-          <div class="mt-3 text-sm text-gray-600 space-y-1">
-            <div>Datum: <strong>{{ latestInspections[type]!.inspectionDate | date:'dd.MM.yyyy' }}</strong></div>
+           class="rounded-xl p-4 text-center border"
+           style="border-color:var(--surface-border); background:var(--surface-hover)">
+        <span class="badge-{{ type.toLowerCase() }} text-sm px-4 py-1.5">{{ type }}</span>
+        <ng-container *ngIf="latestInspections[type]; else noInspection">
+          <div class="mt-3 space-y-1 text-sm">
+            <div style="color:var(--surface-muted)">
+              {{ latestInspections[type]!.inspectionDate | date:'dd.MM.yyyy' }}
+            </div>
             <div *ngIf="latestInspections[type]!.nextDueDate">
-              Fällig:<br>
+              <div class="text-xs" style="color:var(--surface-muted)">Fällig</div>
               <strong [class]="inspectionStatusClass(latestInspections[type]!.nextDueDate!)">
                 {{ latestInspections[type]!.nextDueDate | date:'dd.MM.yyyy' }}
-              </strong><br>
-              <span class="text-xs" [class]="inspectionStatusClass(latestInspections[type]!.nextDueDate!)">
+              </strong>
+              <div class="text-xs mt-0.5" [class]="inspectionStatusClass(latestInspections[type]!.nextDueDate!)">
                 {{ inspectionStatusText(latestInspections[type]!.nextDueDate!) }}
-              </span>
+              </div>
             </div>
-            <div *ngIf="!latestInspections[type]!.nextDueDate" class="status-unknown text-xs">Kein Fälligkeitsdatum</div>
+            <div *ngIf="!latestInspections[type]!.nextDueDate" class="text-xs status-unknown">
+              Kein Fälligkeitsdatum
+            </div>
           </div>
         </ng-container>
-        <ng-template #noInsp>
+        <ng-template #noInspection>
           <div class="mt-3 text-xs status-unknown">Kein Eintrag vorhanden</div>
         </ng-template>
       </div>
     </div>
   </div>
 
-  <!-- Rechnungsliste -->
+  <!-- Invoice list -->
   <div class="card p-0 overflow-hidden">
-    <div class="px-5 py-4 border-b border-gray-200">
-      <h2 class="font-semibold text-gray-800">🧾 Rechnungen ({{ invoices.length }})</h2>
+    <div class="card-header">
+      <h2 class="section-title mb-0">Rechnungen</h2>
+      <span class="badge-gray">{{ invoices.length }}</span>
     </div>
-    <table class="table-auto w-full">
-      <thead><tr>
-        <th>Datum</th><th>Werkstatt</th><th>Reparatur</th><th class="text-right">Betrag</th><th>Status</th>
-      </tr></thead>
+    <table class="data-table w-full">
+      <thead>
+        <tr>
+          <th>Datum</th><th>Werkstatt</th><th>Reparatur</th>
+          <th class="text-right">Betrag</th><th>Status</th>
+        </tr>
+      </thead>
       <tbody>
         <tr *ngFor="let inv of invoices" (click)="goToInvoice(inv)" [class.anomaly-row]="inv.hasAnomalies">
-          <td class="text-sm">{{ inv.invoiceDate | date:'dd.MM.yyyy' }}</td>
-          <td class="text-sm">{{ inv.workshopName ?? '–' }}</td>
-          <td class="text-sm max-w-xs truncate">{{ inv.repairContext ?? '–' }}</td>
-          <td class="text-sm text-right font-medium">{{ inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}</td>
+          <td class="whitespace-nowrap" style="color:var(--surface-muted)">{{ inv.invoiceDate | date:'dd.MM.yyyy' }}</td>
+          <td class="font-medium">{{ inv.workshopName ?? '–' }}</td>
+          <td class="max-w-xs truncate" style="color:var(--surface-muted)">{{ inv.repairContext ?? '–' }}</td>
+          <td class="text-right font-semibold">{{ inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}</td>
           <td>
-            <span *ngIf="inv.hasAnomalies"  class="badge-warning">⚠️ Warnung</span>
-            <span *ngIf="inv.processingError" class="badge-error">Fehler</span>
-            <span *ngIf="!inv.hasAnomalies && !inv.processingError" class="badge-ok">✓ OK</span>
+            <p-tag *ngIf="inv.hasAnomalies"    severity="warn"    value="Warnung" icon="pi pi-exclamation-triangle" />
+            <p-tag *ngIf="inv.processingError" severity="danger"  value="Fehler"  icon="pi pi-times-circle" />
+            <p-tag *ngIf="!inv.hasAnomalies && !inv.processingError" severity="success" value="OK" icon="pi pi-check" />
           </td>
         </tr>
       </tbody>
     </table>
-    <div *ngIf="invoices.length === 0" class="py-12 text-center text-gray-400 text-sm">
-      Noch keine Rechnungen für dieses Fahrzeug
+    <div *ngIf="invoices.length === 0" class="empty-state py-10">
+      <span class="text-4xl">🧾</span>
+      <p class="text-sm">Noch keine Rechnungen für dieses Fahrzeug</p>
     </div>
   </div>
+
 </ng-container>

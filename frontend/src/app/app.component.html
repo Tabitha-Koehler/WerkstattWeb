@@ -1,48 +1,80 @@
-<div class="flex h-screen bg-gray-50">
+<div class="flex h-screen overflow-hidden" style="background:var(--surface-bg)">
 
-  <!-- Sidebar -->
-  <aside class="w-56 bg-white border-r border-gray-200 flex flex-col shrink-0">
-    <div class="px-5 py-4 border-b border-gray-200">
-      <div class="flex items-center gap-2">
-        <span class="text-2xl">🚛</span>
-        <div>
-          <div class="font-bold text-blue-700 text-base leading-tight">WerkstattWeb</div>
-          <div class="text-xs text-gray-400">Spedition</div>
-        </div>
+  <!-- ── Sidebar ─────────────────────────────────────────── -->
+  <aside class="w-60 flex flex-col shrink-0 border-r transition-colors duration-200"
+         style="background:var(--surface-sidebar); border-color:var(--surface-sidebar-border)">
+
+    <!-- Logo -->
+    <div class="flex items-center gap-3 px-5 py-5 border-b" style="border-color:var(--surface-sidebar-border)">
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-md shrink-0">
+        <span class="text-white text-base">🚛</span>
+      </div>
+      <div class="min-w-0">
+        <div class="font-bold text-sm leading-tight" style="color:var(--surface-text)">WerkstattWeb</div>
+        <div class="text-xs" style="color:var(--surface-muted)">Spedition</div>
       </div>
     </div>
 
-    <nav class="flex-1 py-3 px-2 space-y-1">
+    <!-- Navigation -->
+    <nav class="flex-1 py-4 px-3 space-y-0.5 overflow-y-auto">
       <a *ngFor="let item of navItems"
          [routerLink]="item.path"
-         routerLinkActive="bg-blue-50 text-blue-700 font-semibold"
-         class="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-600
-                hover:bg-gray-100 hover:text-gray-900 transition-colors">
-        <span class="text-lg">{{ item.icon }}</span>
-        {{ item.label }}
+         routerLinkActive="nav-active"
+         class="nav-item">
+        <span class="text-base leading-none">{{ item.icon }}</span>
+        <span class="text-sm font-medium">{{ item.label }}</span>
       </a>
     </nav>
 
-    <div class="p-3 border-t border-gray-200">
+    <!-- Bottom: Theme toggle + Upload -->
+    <div class="p-3 border-t space-y-2" style="border-color:var(--surface-sidebar-border)">
+      <!-- Theme Toggle -->
+      <button class="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors"
+              style="color:var(--surface-muted)"
+              [style.background]="'transparent'"
+              (click)="theme.toggle()"
+              [title]="theme.isDark() ? 'Light Mode aktivieren' : 'Dark Mode aktivieren'">
+        <span class="text-base">{{ theme.isDark() ? '☀️' : '🌙' }}</span>
+        <span class="font-medium">{{ theme.isDark() ? 'Light Mode' : 'Dark Mode' }}</span>
+        <div class="ml-auto w-9 h-5 rounded-full transition-colors relative"
+             [style.background]="theme.isDark() ? '#3b82f6' : '#cbd5e1'">
+          <div class="absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform"
+               [style.transform]="theme.isDark() ? 'translateX(1.125rem)' : 'translateX(0.125rem)'"></div>
+        </div>
+      </button>
+
+      <!-- Upload shortcut -->
       <a routerLink="/upload"
-         class="flex items-center gap-2 w-full px-3 py-2 text-sm bg-blue-700 text-white
-                rounded-lg hover:bg-blue-800 transition-colors justify-center font-medium">
+         class="flex items-center justify-center gap-2 w-full px-3 py-2.5 text-sm font-semibold
+                bg-blue-600 text-white rounded-xl hover:bg-blue-700 active:bg-blue-800
+                transition-colors shadow-sm">
         <span>⬆️</span> Rechnung hochladen
       </a>
     </div>
   </aside>
 
-  <!-- Main Content -->
+  <!-- ── Main area ───────────────────────────────────────── -->
   <div class="flex-1 flex flex-col min-w-0">
+
     <!-- Topbar -->
-    <header class="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4 shrink-0">
-      <span class="text-gray-400 text-sm">WerkstattWeb – Spedition Rechnungsverwaltung</span>
+    <header class="flex items-center justify-between px-6 py-3.5 border-b shrink-0 transition-colors duration-200"
+            style="background:var(--surface-card); border-color:var(--surface-border)">
+      <span class="text-sm" style="color:var(--surface-muted)">
+        Spedition Rechnungsverwaltung
+      </span>
+      <div class="flex items-center gap-3">
+        <p-toast></p-toast>
+        <p-confirmDialog></p-confirmDialog>
+        <span class="text-xs px-2 py-1 rounded-full font-medium"
+              style="background:var(--surface-hover); color:var(--surface-muted)">
+          v2.0
+        </span>
+      </div>
     </header>
 
-    <!-- Page -->
+    <!-- Page content -->
     <main class="flex-1 overflow-y-auto p-6">
       <router-outlet></router-outlet>
     </main>
   </div>
-
 </div>

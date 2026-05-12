@@ -1,122 +1,349 @@
-/* ── TailwindCSS 4 ─────────────────────────────── */
+/* ── TailwindCSS 4 ─────────────────────────────────────────── */
 @use "tailwindcss";
 
-/* ── Custom Design Tokens ─────────────────────── */
+/* ── Dark mode via .dark class on <html> ──────────────────── */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ── Design Tokens ────────────────────────────────────────── */
 @theme {
-  --color-primary:         #1d4ed8;
-  --color-primary-light:   #3b82f6;
-  --color-primary-dark:    #1e3a8a;
-  --color-warning:         #ea580c;
-  --color-warning-light:   #fb923c;
-  --color-warning-dark:    #c2410c;
-  --color-success:         #16a34a;
-  --color-success-light:   #4ade80;
-  --color-success-dark:    #15803d;
-  --color-danger:          #dc2626;
-  --color-danger-light:    #f87171;
-  --color-danger-dark:     #b91c1c;
-
   --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Brand colors */
+  --color-brand-50:  #eff6ff;
+  --color-brand-100: #dbeafe;
+  --color-brand-200: #bfdbfe;
+  --color-brand-400: #60a5fa;
+  --color-brand-500: #3b82f6;
+  --color-brand-600: #2563eb;
+  --color-brand-700: #1d4ed8;
+  --color-brand-800: #1e40af;
+  --color-brand-900: #1e3a8a;
+
+  /* Surface tokens – resolved at runtime via CSS variables */
+  --color-surface-bg:      var(--surface-bg);
+  --color-surface-card:    var(--surface-card);
+  --color-surface-border:  var(--surface-border);
+  --color-surface-text:    var(--surface-text);
+  --color-surface-muted:   var(--surface-muted);
+  --color-surface-hover:   var(--surface-hover);
+  --color-surface-sidebar: var(--surface-sidebar);
 }
 
-/* ── Globale Basis ─────────────────────────────── */
-html, body {
-  height: 100%;
-  margin: 0;
-  background-color: #f9fafb;
-  color: #111827;
+/* ── CSS Variables: Light Mode ────────────────────────────── */
+:root {
+  --surface-bg:      #f1f5f9;
+  --surface-card:    #ffffff;
+  --surface-border:  #e2e8f0;
+  --surface-text:    #0f172a;
+  --surface-muted:   #64748b;
+  --surface-hover:   #f8fafc;
+  --surface-sidebar: #ffffff;
+  --surface-sidebar-border: #e2e8f0;
+  --surface-input:   #ffffff;
+}
+
+/* ── CSS Variables: Dark Mode ─────────────────────────────── */
+.dark {
+  --surface-bg:      #0f172a;
+  --surface-card:    #1e293b;
+  --surface-border:  #334155;
+  --surface-text:    #f1f5f9;
+  --surface-muted:   #94a3b8;
+  --surface-hover:   #283447;
+  --surface-sidebar: #1e293b;
+  --surface-sidebar-border: #334155;
+  --surface-input:   #0f172a;
+}
+
+/* ── Base ─────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; }
+
+html {
   font-family: var(--font-family-sans);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* ── PrimeNG + Tailwind Konflikt-Auflösung ────── */
-/* PrimeNG-Komponenten sollen Tailwind-Base nicht überschreiben */
+body {
+  margin: 0;
+  background-color: var(--surface-bg);
+  color: var(--surface-text);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* ── PrimeNG Aura theme integration ──────────────────────── */
 .p-component {
   font-family: var(--font-family-sans);
 }
 
-/* ── Wiederverwendbare Komponenten ─────────────── */
+/* Sync PrimeNG surface to our CSS vars */
+.dark .p-datatable .p-datatable-header,
+.dark .p-datatable .p-datatable-thead > tr > th,
+.dark .p-datatable .p-datatable-tbody > tr {
+  background: var(--surface-card);
+  color: var(--surface-text);
+  border-color: var(--surface-border);
+}
+
+.dark .p-datatable .p-datatable-tbody > tr:hover {
+  background: var(--surface-hover) !important;
+}
+
+/* ── Component Library ───────────────────────────────────── */
 @layer components {
 
-  /* Karten */
+  /* ── Cards ── */
   .card {
-    @apply bg-white rounded-xl shadow-sm border border-gray-200 p-5;
+    background-color: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 0.875rem;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
   }
 
-  /* Buttons (Fallback ohne PrimeNG) */
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--surface-border);
+  }
+
+  /* ── Stat Cards ── */
+  .stat-card {
+    @apply card flex flex-col gap-1 p-5;
+  }
+
+  .stat-card-value {
+    font-size: 1.875rem;
+    font-weight: 700;
+    line-height: 1;
+    color: var(--surface-text);
+  }
+
+  .stat-card-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--surface-muted);
+  }
+
+  /* ── Page heading ── */
+  .page-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--surface-text);
+    line-height: 1.2;
+  }
+
+  .page-subtitle {
+    font-size: 0.875rem;
+    color: var(--surface-muted);
+    margin-top: 0.125rem;
+  }
+
+  /* ── Spinner ── */
+  .spinner {
+    @apply w-10 h-10 rounded-full border-4 border-blue-500 border-t-transparent animate-spin;
+  }
+
+  /* ── Fallback Buttons (when not using p-button) ── */
   .btn {
     @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
-           transition-colors cursor-pointer border-0;
+           transition-all duration-150 cursor-pointer border-0 focus:outline-none
+           focus:ring-2 focus:ring-offset-1;
   }
   .btn-primary {
-    @apply btn bg-blue-700 text-white hover:bg-blue-800;
+    @apply btn bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500;
   }
   .btn-secondary {
-    @apply btn bg-white text-gray-700 border border-gray-300 hover:bg-gray-50;
+    border: 1px solid var(--surface-border);
+    background: var(--surface-card);
+    color: var(--surface-text);
+    @apply btn hover:opacity-80 focus:ring-slate-400;
   }
   .btn-danger {
-    @apply btn bg-red-600 text-white hover:bg-red-700;
+    @apply btn bg-red-600 text-white hover:bg-red-700 focus:ring-red-500;
+  }
+  .btn-ghost {
+    background: transparent;
+    color: var(--surface-muted);
+    @apply btn hover:bg-slate-100 dark:hover:bg-slate-700;
   }
   .btn-icon {
-    @apply p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors cursor-pointer
-           border-0 bg-transparent;
+    background: transparent;
+    color: var(--surface-muted);
+    @apply p-2 rounded-lg transition-colors cursor-pointer border-0
+           hover:bg-slate-100 dark:hover:bg-slate-700;
   }
 
-  /* Tabellen */
-  .table-auto thead th {
-    @apply px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider
-           bg-gray-50 border-b border-gray-200;
+  /* ── Tables ── */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
   }
-  .table-auto tbody td {
-    @apply px-4 py-3 text-sm border-b border-gray-100;
+
+  .data-table thead th {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--surface-muted);
+    background: var(--surface-hover);
+    border-bottom: 1px solid var(--surface-border);
   }
-  .table-auto tbody tr {
-    @apply hover:bg-gray-50 cursor-pointer transition-colors;
+
+  .data-table tbody td {
+    padding: 0.875rem 1rem;
+    font-size: 0.875rem;
+    border-bottom: 1px solid var(--surface-border);
+    color: var(--surface-text);
   }
+
+  .data-table tbody tr {
+    cursor: pointer;
+    transition: background-color 0.1s ease;
+  }
+
+  .data-table tbody tr:hover {
+    background-color: var(--surface-hover);
+  }
+
+  .data-table tbody tr:last-child td {
+    border-bottom: none;
+  }
+
   .anomaly-row td {
-    @apply bg-orange-50;
+    background-color: rgb(254 243 199 / 0.4);
+  }
+  .dark .anomaly-row td {
+    background-color: rgb(120 53 15 / 0.25);
   }
 
-  /* Badges / Chips */
+  /* ── Status Badges ── */
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
   }
-  .badge-sp      { @apply badge bg-blue-100   text-blue-800;   }
-  .badge-hu      { @apply badge bg-green-100  text-green-800;  }
-  .badge-au      { @apply badge bg-purple-100 text-purple-800; }
-  .badge-ok      { @apply badge bg-green-100  text-green-800;  }
-  .badge-warning { @apply badge bg-orange-100 text-orange-800; }
-  .badge-error   { @apply badge bg-red-100    text-red-800;    }
-  .badge-gray    { @apply badge bg-gray-100   text-gray-600;   }
+  .badge-sp      { @apply badge bg-blue-100   text-blue-800   dark:bg-blue-900/50  dark:text-blue-300; }
+  .badge-hu      { @apply badge bg-green-100  text-green-800  dark:bg-green-900/50 dark:text-green-300; }
+  .badge-au      { @apply badge bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-300; }
+  .badge-ok      { @apply badge bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300; }
+  .badge-warning { @apply badge bg-amber-100  text-amber-800  dark:bg-amber-900/50  dark:text-amber-300; }
+  .badge-error   { @apply badge bg-red-100    text-red-800    dark:bg-red-900/50    dark:text-red-300; }
+  .badge-gray    { @apply badge bg-slate-100  text-slate-600  dark:bg-slate-700     dark:text-slate-300; }
 
-  /* Formfelder */
+  /* ── Form Controls ── */
   .form-label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    display: block;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--surface-muted);
+    margin-bottom: 0.375rem;
   }
+
   .form-input {
-    @apply w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm
-           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500;
+    width: 100%;
+    border: 1px solid var(--surface-border);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    background: var(--surface-input);
+    color: var(--surface-text);
+    transition: border-color 0.15s, box-shadow 0.15s, background-color 0.2s;
+    outline: none;
+    font-family: var(--font-family-sans);
   }
+
+  .form-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgb(59 130 246 / 0.15);
+  }
+
+  .form-input::placeholder {
+    color: var(--surface-muted);
+    opacity: 0.7;
+  }
+
   .form-select {
     @apply form-input;
+    cursor: pointer;
   }
 
-  /* Prüfungsstatus */
-  .status-ok      { @apply text-green-700 font-medium; }
-  .status-soon    { @apply text-orange-600 font-semibold; }
-  .status-overdue { @apply text-red-700 font-bold; }
-  .status-unknown { @apply text-gray-400; }
+  /* ── Inspection status ── */
+  .status-ok      { color: #16a34a; font-weight: 500; }
+  .status-soon    { color: #d97706; font-weight: 600; }
+  .status-overdue { color: #dc2626; font-weight: 700; }
+  .status-unknown { color: var(--surface-muted); }
 
-  /* Warnbanner */
-  .warning-banner {
-    @apply flex items-start gap-3 p-4 bg-orange-50 border-l-4 border-orange-500
-           rounded-r-lg text-sm text-orange-900;
+  .dark .status-ok      { color: #4ade80; }
+  .dark .status-soon    { color: #fbbf24; }
+  .dark .status-overdue { color: #f87171; }
+
+  /* ── Alert banners ── */
+  .banner {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    border-left: 4px solid;
   }
-  .error-banner {
-    @apply flex items-start gap-3 p-4 bg-red-50 border-l-4 border-red-500
-           rounded-r-lg text-sm text-red-900;
+
+  .banner-warning {
+    @apply banner;
+    background: rgb(254 243 199 / 0.6);
+    border-color: #f59e0b;
+    color: #92400e;
   }
-  .info-banner {
-    @apply flex items-start gap-3 p-4 bg-blue-50 border-l-4 border-blue-500
-           rounded-r-lg text-sm text-blue-900;
+  .dark .banner-warning {
+    background: rgb(120 53 15 / 0.25);
+    color: #fde68a;
+  }
+
+  .banner-error {
+    @apply banner;
+    background: rgb(254 226 226 / 0.6);
+    border-color: #ef4444;
+    color: #991b1b;
+  }
+  .dark .banner-error {
+    background: rgb(127 29 29 / 0.25);
+    color: #fca5a5;
+  }
+
+  .banner-info {
+    @apply banner;
+    background: rgb(219 234 254 / 0.6);
+    border-color: #3b82f6;
+    color: #1e40af;
+  }
+  .dark .banner-info {
+    background: rgb(30 58 138 / 0.25);
+    color: #93c5fd;
+  }
+
+  /* legacy aliases */
+  .warning-banner { @apply banner-warning; }
+  .error-banner   { @apply banner-error; }
+  .info-banner    { @apply banner-info; }
+
+  /* ── Section divider ── */
+  .section-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--surface-muted);
+    margin-bottom: 0.5rem;
+  }
+
+  /* ── Empty state ── */
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-16 gap-3;
+    color: var(--surface-muted);
   }
 }
