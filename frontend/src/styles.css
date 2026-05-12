@@ -57,7 +57,6 @@ body {
   transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* ── PrimeNG component font ───────────────────────────────── */
 .p-component {
   font-family: var(--font-family-sans);
 }
@@ -83,9 +82,17 @@ body {
     border-bottom: 1px solid var(--surface-border);
   }
 
-  /* Stat Cards */
+  /* Stat Cards — card props inlined to avoid @apply on custom class */
   .stat-card {
-    @apply card flex flex-col gap-1 p-5;
+    background-color: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 0.875rem;
+    padding: 1.25rem;
+    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.07), 0 1px 2px -1px rgb(0 0 0 / 0.07);
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
   }
 
   .stat-card-value {
@@ -117,7 +124,7 @@ body {
     margin-top: 0.125rem;
   }
 
-  /* Spinner */
+  /* Spinner — only Tailwind utilities */
   .spinner {
     @apply w-10 h-10 rounded-full border-4 border-blue-500 border-t-transparent animate-spin;
   }
@@ -197,17 +204,99 @@ body {
     background-color: rgb(120 53 15 / 0.25);
   }
 
-  /* Status Badges */
+  /* Badges — badge props inlined to avoid @apply on custom class */
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
   }
-  .badge-sp      { @apply badge bg-blue-100   text-blue-800   dark:bg-blue-900/50   dark:text-blue-300; }
-  .badge-hu      { @apply badge bg-green-100  text-green-800  dark:bg-green-900/50  dark:text-green-300; }
-  .badge-au      { @apply badge bg-violet-100 text-violet-800 dark:bg-violet-900/50 dark:text-violet-300; }
-  .badge-ok      { @apply badge bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300; }
-  .badge-warning { @apply badge bg-amber-100  text-amber-800  dark:bg-amber-900/50  dark:text-amber-300; }
-  .badge-error   { @apply badge bg-red-100    text-red-800    dark:bg-red-900/50    dark:text-red-300; }
-  .badge-gray    { @apply badge bg-slate-100  text-slate-600  dark:bg-slate-700     dark:text-slate-300; }
+
+  .badge-sp {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: #dbeafe;
+    color: #1e40af;
+  }
+  .dark .badge-sp { background-color: rgb(30 58 138 / 0.5); color: #93c5fd; }
+
+  .badge-hu {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: #dcfce7;
+    color: #166534;
+  }
+  .dark .badge-hu { background-color: rgb(20 83 45 / 0.5); color: #86efac; }
+
+  .badge-au {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: #ede9fe;
+    color: #5b21b6;
+  }
+  .dark .badge-au { background-color: rgb(76 29 149 / 0.5); color: #c4b5fd; }
+
+  .badge-ok {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+  .dark .badge-ok { background-color: rgb(6 78 59 / 0.5); color: #6ee7b7; }
+
+  .badge-warning {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: #fef3c7;
+    color: #92400e;
+  }
+  .dark .badge-warning { background-color: rgb(120 53 15 / 0.5); color: #fcd34d; }
+
+  .badge-error {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+  .dark .badge-error { background-color: rgb(127 29 29 / 0.5); color: #fca5a5; }
+
+  .badge-gray {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.125rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    background-color: #f1f5f9;
+    color: #475569;
+  }
+  .dark .badge-gray { background-color: #334155; color: #cbd5e1; }
 
   /* Form Controls */
   .form-label {
@@ -241,8 +330,18 @@ body {
     opacity: 0.7;
   }
 
+  /* form-select inlines form-input properties */
   .form-select {
-    @apply form-input;
+    width: 100%;
+    border: 1px solid var(--surface-border);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    background: var(--surface-input);
+    color: var(--surface-text);
+    transition: border-color 0.15s, box-shadow 0.15s, background-color 0.2s;
+    outline: none;
+    font-family: var(--font-family-sans);
     cursor: pointer;
   }
 
@@ -256,21 +355,16 @@ body {
   .dark .status-soon    { color: #fbbf24; }
   .dark .status-overdue { color: #f87171; }
 
-  /* Alert banners */
-  .banner {
+  /* Alert banners — base props inlined in each variant */
+  .banner-warning {
     display: flex;
     align-items: flex-start;
     gap: 0.75rem;
     padding: 0.875rem 1rem;
     border-radius: 0.75rem;
     font-size: 0.875rem;
-    border-left: 4px solid;
-  }
-
-  .banner-warning {
-    @apply banner;
+    border-left: 4px solid #f59e0b;
     background: rgb(254 243 199 / 0.6);
-    border-color: #f59e0b;
     color: #92400e;
   }
   .dark .banner-warning {
@@ -279,9 +373,14 @@ body {
   }
 
   .banner-error {
-    @apply banner;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    border-left: 4px solid #ef4444;
     background: rgb(254 226 226 / 0.6);
-    border-color: #ef4444;
     color: #991b1b;
   }
   .dark .banner-error {
@@ -290,9 +389,14 @@ body {
   }
 
   .banner-info {
-    @apply banner;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    border-radius: 0.75rem;
+    font-size: 0.875rem;
+    border-left: 4px solid #3b82f6;
     background: rgb(219 234 254 / 0.6);
-    border-color: #3b82f6;
     color: #1e40af;
   }
   .dark .banner-info {
@@ -312,7 +416,12 @@ body {
 
   /* Empty state */
   .empty-state {
-    @apply flex flex-col items-center justify-center py-16 gap-3;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 4rem 0;
+    gap: 0.75rem;
     color: var(--surface-muted);
   }
 }
