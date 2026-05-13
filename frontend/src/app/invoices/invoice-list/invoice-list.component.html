@@ -15,24 +15,24 @@
                placeholder="Kennzeichen, Werkstatt...">
       </span>
       <p-button
-        [label]="showOnlyAnomalies ? 'Alle anzeigen' : 'Nur Warnungen'"
+        [label]="showOnlyAnomalies() ? 'Alle anzeigen' : 'Nur Warnungen'"
         icon="fa-solid fa-triangle-exclamation"
-        [severity]="showOnlyAnomalies ? 'warn' : 'secondary'"
-        [outlined]="!showOnlyAnomalies"
+        [severity]="showOnlyAnomalies() ? 'warn' : 'secondary'"
+        [outlined]="!showOnlyAnomalies()"
         (click)="toggleAnomalies()" />
       <p-button label="Hochladen" icon="fa-solid fa-upload" routerLink="/upload" />
     </div>
   </div>
 
   <!-- Loading -->
-  @if (loading) {
+  @if (loading()) {
     <div class="flex justify-center py-20">
       <div class="spinner"></div>
     </div>
   }
 
   <!-- Table -->
-  @if (!loading) {
+  @if (!loading()) {
     <div class="card p-0 overflow-hidden">
       <table class="data-table w-full">
         <thead>
@@ -46,7 +46,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (inv of filteredInvoices; track inv.id) {
+          @for (inv of filteredInvoices(); track inv.id) {
             <tr (click)="goToDetail(inv)" [class.anomaly-row]="inv.hasAnomalies">
               <td class="whitespace-nowrap" style="color:var(--surface-muted)">
                 {{ inv.invoiceDate | date:'dd.MM.yyyy' }}
@@ -77,7 +77,7 @@
         </tbody>
       </table>
 
-      @if (filteredInvoices.length === 0) {
+      @if (filteredInvoices().length === 0) {
         <div class="empty-state">
           <i class="fa-solid fa-receipt text-5xl" style="color:var(--surface-muted)"></i>
           <p class="font-medium">Keine Rechnungen gefunden</p>

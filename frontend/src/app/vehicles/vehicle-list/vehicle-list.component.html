@@ -10,21 +10,21 @@
   </div>
 
   <!-- Error -->
-  @if (errorMsg) {
+  @if (errorMsg()) {
     <div class="banner-error">
-      <i class="fa-solid fa-triangle-exclamation"></i> {{ errorMsg }}
+      <i class="fa-solid fa-triangle-exclamation"></i> {{ errorMsg() }}
     </div>
   }
 
   <!-- Loading -->
-  @if (loading) {
+  @if (loading()) {
     <div class="flex justify-center py-20">
       <div class="spinner"></div>
     </div>
   }
 
   <!-- Table card -->
-  @if (!loading) {
+  @if (!loading()) {
     <div class="card p-0 overflow-hidden">
       <table class="data-table w-full">
         <thead>
@@ -38,7 +38,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (v of vehicles; track v.id) {
+          @for (v of vehicles(); track v.id) {
             <tr (click)="goToDetail(v)">
               <td>
                 <span class="inline-flex items-center gap-2">
@@ -62,7 +62,7 @@
         </tbody>
       </table>
 
-      @if (vehicles.length === 0) {
+      @if (vehicles().length === 0) {
         <div class="empty-state">
           <i class="fa-solid fa-truck text-5xl" style="color:var(--surface-muted)"></i>
           <p class="font-medium">Noch keine Fahrzeuge</p>
@@ -74,10 +74,10 @@
 </div>
 
 <!-- Vehicle Dialog -->
-@if (dialogOpen) {
+@if (dialogOpen()) {
   <app-vehicle-dialog
-    [vehicle]="editingVehicle"
+    [vehicle]="editingVehicle()"
     (saved)="onSaved($event)"
-    (cancel)="dialogOpen = false">
+    (cancel)="dialogOpen.set(false)">
   </app-vehicle-dialog>
 }

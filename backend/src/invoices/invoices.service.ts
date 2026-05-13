@@ -60,13 +60,19 @@ export class InvoicesService {
 
       if (analysis.licensePlate) {
         const normalizedPlate = analysis.licensePlate.toUpperCase().trim();
-        let vehicle = await this.vehicleRepo.findOne({ where: { licensePlate: normalizedPlate } });
-        if (!vehicle) {
-          vehicle = this.vehicleRepo.create({ licensePlate: normalizedPlate });
-          await this.vehicleRepo.save(vehicle);
-          this.logger.log(`Neues Fahrzeug erstellt: ${normalizedPlate}`);
+        // Race-condition-safe upsert: INSERT ON CONFLICT DO NOTHING + findOne
+        await this.vehicleRepo
+          .createQueryBuilder()
+          .insert()
+          .into(Vehicle)
+          .values({ licensePlate: normalizedPlate })
+          .orIgnore()
+          .execute();
+        const vehicle = await this.vehicleRepo.findOne({ where: { licensePlate: normalizedPlate } });
+        if (vehicle) {
+          invoice.vehicleId = vehicle.id;
+          this.logger.log(`Fahrzeug zugeordnet: ${normalizedPlate}`);
         }
-        invoice.vehicleId = vehicle.id;
       }
 
       await this.invoiceRepo.save(invoice);

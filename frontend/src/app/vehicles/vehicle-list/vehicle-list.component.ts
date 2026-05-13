@@ -1,6 +1,6 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, resource } from '@angular/core';
 import { Router } from '@angular/router';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { firstValueFrom } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { ApiService } from '../../core/services/api.service';
@@ -20,15 +20,15 @@ export class VehicleListComponent {
   // Incrementing this signal triggers a reload of the resource
   private reloadTrigger = signal(0);
 
-  private vehiclesRes = rxResource({
+  private vehiclesRes = resource({
     params: () => this.reloadTrigger(),
-    stream: () => this.api.getVehicles(),
+    loader: () => firstValueFrom(this.api.getVehicles()),
   });
 
-  vehicles     = computed(() => this.vehiclesRes.value() ?? [] as Vehicle[]);
-  loading      = computed(() => this.vehiclesRes.isLoading());
-  errorMsg     = signal('');
-  dialogOpen   = signal(false);
+  vehicles       = computed(() => this.vehiclesRes.value() ?? [] as Vehicle[]);
+  loading        = computed(() => this.vehiclesRes.isLoading());
+  errorMsg       = signal('');
+  dialogOpen     = signal(false);
   editingVehicle = signal<Vehicle | null>(null);
 
   openDialog(vehicle?: Vehicle): void {

@@ -7,13 +7,13 @@
   </div>
 
   <!-- Loading -->
-  @if (loading) {
+  @if (loading()) {
     <div class="flex justify-center py-20">
       <div class="spinner"></div>
     </div>
   }
 
-  @if (!loading) {
+  @if (!loading()) {
 
     <!-- Stat cards -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -25,20 +25,20 @@
             <i class="fa-solid fa-receipt"></i>
           </span>
         </div>
-        <div class="stat-card-value text-blue-600 dark:text-blue-400">{{ stats?.total ?? 0 }}</div>
+        <div class="stat-card-value text-blue-600 dark:text-blue-400">{{ stats()?.total ?? 0 }}</div>
         <div class="stat-card-label">Gesamt</div>
       </div>
 
-      <div class="stat-card" [class.border-amber-400]="(stats?.withAnomalies ?? 0) > 0">
+      <div class="stat-card" [class.border-amber-400]="(stats()?.withAnomalies ?? 0) > 0">
         <div class="flex items-center justify-between mb-3">
           <span class="section-title">Warnungen</span>
           <span class="w-9 h-9 rounded-xl flex items-center justify-center text-sm"
-                [class]="(stats?.withAnomalies ?? 0) > 0 ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-700'">
+                [class]="(stats()?.withAnomalies ?? 0) > 0 ? 'bg-amber-500/10 text-amber-600 dark:bg-amber-500/20 dark:text-amber-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-700'">
             <i class="fa-solid fa-triangle-exclamation"></i>
           </span>
         </div>
-        <div class="stat-card-value" [class]="(stats?.withAnomalies ?? 0) > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'">
-          {{ stats?.withAnomalies ?? 0 }}
+        <div class="stat-card-value" [class]="(stats()?.withAnomalies ?? 0) > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'">
+          {{ stats()?.withAnomalies ?? 0 }}
         </div>
         <div class="stat-card-label">Anomalien</div>
       </div>
@@ -50,20 +50,20 @@
             <i class="fa-solid fa-warehouse"></i>
           </span>
         </div>
-        <div class="stat-card-value text-violet-600 dark:text-violet-400">{{ stats?.warehouse ?? 0 }}</div>
+        <div class="stat-card-value text-violet-600 dark:text-violet-400">{{ stats()?.warehouse ?? 0 }}</div>
         <div class="stat-card-label">Lagerrechnungen</div>
       </div>
 
-      <div class="stat-card" [class.border-l-4]="(stats?.errors ?? 0) > 0" [class.border-red-500]="(stats?.errors ?? 0) > 0">
+      <div class="stat-card" [class.border-l-4]="(stats()?.errors ?? 0) > 0" [class.border-red-500]="(stats()?.errors ?? 0) > 0">
         <div class="flex items-center justify-between mb-3">
           <span class="section-title">Fehler</span>
           <span class="w-9 h-9 rounded-xl flex items-center justify-center text-sm"
-                [class]="(stats?.errors ?? 0) > 0 ? 'bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-700'">
+                [class]="(stats()?.errors ?? 0) > 0 ? 'bg-red-500/10 text-red-600 dark:bg-red-500/20 dark:text-red-400' : 'bg-slate-100 text-slate-400 dark:bg-slate-700'">
             <i class="fa-solid fa-circle-xmark"></i>
           </span>
         </div>
-        <div class="stat-card-value" [class]="(stats?.errors ?? 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400'">
-          {{ stats?.errors ?? 0 }}
+        <div class="stat-card-value" [class]="(stats()?.errors ?? 0) > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-400'">
+          {{ stats()?.errors ?? 0 }}
         </div>
         <div class="stat-card-label">Verarbeitungsfehler</div>
       </div>
@@ -71,15 +71,15 @@
     </div>
 
     <!-- Overdue inspections -->
-    @if (overdueInspections.length > 0) {
+    @if (overdueInspections().length > 0) {
       <div class="card border-l-4 border-red-500">
         <div class="flex items-center gap-2 mb-4">
           <i class="fa-solid fa-circle text-red-500 text-xs"></i>
           <h2 class="font-semibold" style="color:var(--surface-text)">Überfällige Prüfungen</h2>
-          <span class="badge-error ml-1">{{ overdueInspections.length }}</span>
+          <span class="badge-error ml-1">{{ overdueInspections().length }}</span>
         </div>
         <div class="space-y-2">
-          @for (item of overdueInspections; track item.vehicleId) {
+          @for (item of overdueInspections(); track item.vehicleId) {
             <a [routerLink]="['/vehicles', item.vehicleId]"
                class="flex items-center justify-between p-3 rounded-xl transition-colors no-underline"
                style="background:rgb(239 68 68 / 0.06); border:1px solid rgb(239 68 68 / 0.15)"
@@ -100,16 +100,16 @@
     }
 
     <!-- Upcoming inspections -->
-    @if (upcomingInspections.length > 0) {
+    @if (upcomingInspections().length > 0) {
       <div class="card">
         <div class="flex items-center gap-2 mb-4">
           <i class="fa-solid fa-circle text-amber-500 text-xs"></i>
           <h2 class="font-semibold" style="color:var(--surface-text)">Demnächst fällig</h2>
-          <span class="badge-warning ml-1">{{ upcomingInspections.length }}</span>
+          <span class="badge-warning ml-1">{{ upcomingInspections().length }}</span>
           <span class="text-xs ml-auto" style="color:var(--surface-muted)">innerhalb 60 Tage</span>
         </div>
         <div class="space-y-2">
-          @for (item of upcomingInspections; track item.vehicleId) {
+          @for (item of upcomingInspections(); track item.vehicleId) {
             <a [routerLink]="['/vehicles', item.vehicleId]"
                class="flex items-center justify-between p-3 rounded-xl transition-colors no-underline"
                style="background:var(--surface-hover); border:1px solid var(--surface-border)"
@@ -138,7 +138,7 @@
         </a>
       </div>
       <div class="space-y-1">
-        @for (inv of recentInvoices; track inv.id) {
+        @for (inv of recentInvoices(); track inv.id) {
           <a [routerLink]="['/invoices', inv.id]"
              class="flex items-center gap-4 px-2 py-2.5 rounded-lg transition-colors no-underline"
              style="color:var(--surface-text)"

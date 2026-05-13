@@ -7,13 +7,13 @@
   </div>
 
   <!-- Loading -->
-  @if (loading) {
+  @if (loading()) {
     <div class="flex justify-center py-20">
       <div class="spinner"></div>
     </div>
   }
 
-  @if (!loading) {
+  @if (!loading()) {
 
     <!-- Stats -->
     <div class="grid grid-cols-2 gap-4">
@@ -24,7 +24,7 @@
             <i class="fa-solid fa-warehouse"></i>
           </span>
         </div>
-        <div class="stat-card-value text-violet-600 dark:text-violet-400">{{ invoices.length }}</div>
+        <div class="stat-card-value text-violet-600 dark:text-violet-400">{{ invoices().length }}</div>
         <div class="stat-card-label">Gesamt</div>
       </div>
       <div class="stat-card">
@@ -54,7 +54,7 @@
           </tr>
         </thead>
         <tbody>
-          @for (inv of invoices; track inv.id) {
+          @for (inv of invoices(); track inv.id) {
             <tr (click)="goToDetail(inv)" [class.anomaly-row]="inv.hasAnomalies">
               <td class="whitespace-nowrap" style="color:var(--surface-muted)">
                 {{ inv.invoiceDate | date:'dd.MM.yyyy' }}
@@ -80,7 +80,7 @@
         </tbody>
       </table>
 
-      @if (invoices.length === 0) {
+      @if (invoices().length === 0) {
         <div class="empty-state">
           <i class="fa-solid fa-warehouse text-5xl" style="color:var(--surface-muted)"></i>
           <p class="font-medium">Noch keine Lagerrechnungen</p>

@@ -1,7 +1,7 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, resource } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, CurrencyPipe } from '@angular/common';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { firstValueFrom } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
@@ -21,7 +21,7 @@ export class InvoiceDetailComponent {
 
   private id = this.route.snapshot.paramMap.get('id')!;
 
-  private invoiceRes = rxResource({ stream: () => this.api.getInvoice(this.id) });
+  private invoiceRes = resource({ loader: () => firstValueFrom(this.api.getInvoice(this.id)) });
 
   invoice  = computed(() => this.invoiceRes.value());
   loading  = computed(() => this.invoiceRes.isLoading());

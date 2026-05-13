@@ -1,7 +1,7 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, resource } from '@angular/core';
 import { Router } from '@angular/router';
 import { DatePipe, CurrencyPipe } from '@angular/common';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { firstValueFrom } from 'rxjs';
 import { TagModule } from 'primeng/tag';
 import { ApiService } from '../core/services/api.service';
 import { Invoice } from '../core/models/models';
@@ -16,7 +16,7 @@ export class WarehouseComponent {
   private api    = inject(ApiService);
   private router = inject(Router);
 
-  private invoicesRes = rxResource({ stream: () => this.api.getInvoices(undefined, true) });
+  private invoicesRes = resource({ loader: () => firstValueFrom(this.api.getInvoices(undefined, true)) });
 
   invoices  = computed(() => this.invoicesRes.value() ?? [] as Invoice[]);
   loading   = computed(() => this.invoicesRes.isLoading());

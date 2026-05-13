@@ -175,8 +175,21 @@ SP=Sicherheitsprüfung, HU=Hauptuntersuchung, AU=Abgasuntersuchung als inspectio
     const text = rawText;
 
     // Kennzeichen erkennen (deutsches Format)
-    const plateMatch = text.match(/\b([A-ZÄÖÜ]{1,3}[-\s][A-Z]{1,2}[-\s]\d{1,4}[HE]?)\b/);
-    const licensePlate = plateMatch ? plateMatch[1].replace(/\s/g, '-').toUpperCase() : null;
+    // Strategie 1: nach "Kennzeichen:" suchen (zuverlässigste Quelle)
+    const kennzeichenCtx = text.match(/Kennzeichen[:\s]+([A-ZÄÖÜ]{1,3}[\s]*[-]?[\s]*[A-Z]{1,2}[\s]*[-]?[\s]*\d{1,4}[HE]?)/i);
+    // Strategie 2: allgemeine Mustererkennung (flexibel: Leerzeichen+Bindestrich in beliebiger Kombi)
+    const genericMatch = text.match(/\b([A-ZÄÖÜ]{1,3})\s*[-]?\s*([A-Z]{1,2})\s*[-]?\s*(\d{1,4}[HE]?)\b/);
+
+    let licensePlate: string | null = null;
+    if (kennzeichenCtx) {
+      // Normalisieren: "HAM -CK 504" → "HAM-CK 504"
+      const raw = kennzeichenCtx[1].replace(/\s*-\s*/g, '-').replace(/\s+/g, ' ').trim();
+      // Sicherstellen: FORMAT X-XX 0000
+      const parts = raw.match(/^([A-ZÄÖÜ]{1,3})-?([A-Z]{1,2})\s*(\d{1,4}[HE]?)$/i);
+      licensePlate = parts ? `${parts[1].toUpperCase()}-${parts[2].toUpperCase()} ${parts[3].toUpperCase()}` : raw.toUpperCase();
+    } else if (genericMatch) {
+      licensePlate = `${genericMatch[1]}-${genericMatch[2]} ${genericMatch[3]}`.toUpperCase();
+    }
 
     // Gesamtbetrag
     const totalMatch = text.match(/(?:Gesamt|Brutto|Rechnungsbetrag|Total)[^\d]*(\d{1,6}[.,]\d{2})/i);

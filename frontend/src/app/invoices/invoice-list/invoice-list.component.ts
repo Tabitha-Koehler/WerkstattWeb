@@ -1,8 +1,8 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, resource } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, CurrencyPipe } from '@angular/common';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { firstValueFrom } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { ApiService } from '../../core/services/api.service';
@@ -21,7 +21,7 @@ export class InvoiceListComponent {
   filter            = signal('');
   showOnlyAnomalies = signal(false);
 
-  private invoicesRes = rxResource({ stream: () => this.api.getInvoices(undefined, false) });
+  private invoicesRes = resource({ loader: () => firstValueFrom(this.api.getInvoices(undefined, false)) });
 
   loading = computed(() => this.invoicesRes.isLoading());
 

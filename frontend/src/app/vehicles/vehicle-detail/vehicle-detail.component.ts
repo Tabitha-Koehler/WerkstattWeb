@@ -1,7 +1,7 @@
-import { Component, inject, computed } from '@angular/core';
+import { Component, inject, computed, resource } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe, CurrencyPipe } from '@angular/common';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { firstValueFrom } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
@@ -21,9 +21,9 @@ export class VehicleDetailComponent {
 
   private vehicleId = this.route.snapshot.paramMap.get('id')!;
 
-  private vehicleRes     = rxResource({ stream: () => this.api.getVehicle(this.vehicleId) });
-  private invoicesRes    = rxResource({ stream: () => this.api.getInvoices(this.vehicleId) });
-  private inspectionsRes = rxResource({ stream: () => this.api.getLatestInspections(this.vehicleId) });
+  private vehicleRes     = resource({ loader: () => firstValueFrom(this.api.getVehicle(this.vehicleId)) });
+  private invoicesRes    = resource({ loader: () => firstValueFrom(this.api.getInvoices(this.vehicleId)) });
+  private inspectionsRes = resource({ loader: () => firstValueFrom(this.api.getLatestInspections(this.vehicleId)) });
 
   vehicle           = computed(() => this.vehicleRes.value());
   invoices          = computed(() => this.invoicesRes.value() ?? []);

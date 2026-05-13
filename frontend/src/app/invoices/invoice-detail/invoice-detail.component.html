@@ -1,30 +1,30 @@
-@if (loading) {
+@if (loading()) {
   <div class="flex justify-center py-20">
     <div class="spinner"></div>
   </div>
 }
 
-@if (!loading && invoice) {
+@if (!loading() && invoice()) {
 
   <!-- Back + title row -->
   <div class="flex items-start gap-4 mb-6">
     <p-button icon="fa-solid fa-arrow-left" [text]="true" [rounded]="true" severity="secondary"
-      (click)="invoice.vehicleId ? router.navigate(['/vehicles', invoice.vehicleId]) : router.navigate(['/invoices'])" />
+      (click)="invoice()!.vehicleId ? router.navigate(['/vehicles', invoice()!.vehicleId]) : router.navigate(['/invoices'])" />
     <div class="flex-1 min-w-0">
-      <h1 class="page-title truncate">{{ invoice.workshopName ?? 'Rechnung' }}</h1>
+      <h1 class="page-title truncate">{{ invoice()!.workshopName ?? 'Rechnung' }}</h1>
       <p class="page-subtitle">
-        Nr. {{ invoice.invoiceNumber ?? '–' }} &nbsp;·&nbsp;
-        {{ invoice.vehicle?.licensePlate ?? 'Lager' }} &nbsp;·&nbsp;
-        {{ invoice.invoiceDate | date:'dd.MM.yyyy' }}
+        Nr. {{ invoice()!.invoiceNumber ?? '–' }} &nbsp;·&nbsp;
+        {{ invoice()!.vehicle?.licensePlate ?? 'Lager' }} &nbsp;·&nbsp;
+        {{ invoice()!.invoiceDate | date:'dd.MM.yyyy' }}
       </p>
     </div>
     <div class="flex items-center gap-2 shrink-0">
       <p-button
-        [label]="showPdf ? 'PDF ausblenden' : 'PDF anzeigen'"
+        [label]="showPdf() ? 'PDF ausblenden' : 'PDF anzeigen'"
         icon="fa-solid fa-file-pdf"
         severity="secondary"
         [outlined]="true"
-        (click)="showPdf = !showPdf" />
+        (click)="showPdf.set(!showPdf())" />
       <p-button icon="fa-solid fa-trash" severity="danger" [outlined]="true" (click)="deleteInvoice()"
                 pTooltip="Rechnung löschen" />
     </div>
@@ -46,10 +46,10 @@
   }
 
   <!-- Error banner -->
-  @if (invoice.processingError) {
+  @if (invoice()!.processingError) {
     <div class="banner-error mb-4">
       <i class="fa-solid fa-circle-xmark text-lg shrink-0"></i>
-      <div><strong>Verarbeitungsfehler:</strong> {{ invoice.processingErrorMessage }}</div>
+      <div><strong>Verarbeitungsfehler:</strong> {{ invoice()!.processingErrorMessage }}</div>
     </div>
   }
 
@@ -68,7 +68,7 @@
         <div class="flex gap-3 text-sm pt-1 border-t" style="border-color:var(--surface-border)">
           <dt class="w-32 shrink-0" style="color:var(--surface-muted)">Gesamtbetrag</dt>
           <dd class="font-bold text-blue-600 dark:text-blue-400 text-lg">
-            {{ invoice.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}
+            {{ invoice()!.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}
           </dd>
         </div>
       </dl>
@@ -77,7 +77,7 @@
     <div class="card">
       <h2 class="section-title mb-4">KI-Analyse</h2>
       <p class="text-sm leading-relaxed" style="color:var(--surface-text)">
-        {{ invoice.aiSummary ?? 'Keine KI-Zusammenfassung verfügbar.' }}
+        {{ invoice()!.aiSummary ?? 'Keine KI-Zusammenfassung verfügbar.' }}
       </p>
     </div>
   </div>
@@ -122,7 +122,7 @@
   <div class="card p-0 overflow-hidden mb-4">
     <div class="card-header">
       <h2 class="section-title mb-0">Rechnungspositionen</h2>
-      <span class="badge-gray">{{ invoice.positions?.length ?? 0 }} Positionen</span>
+      <span class="badge-gray">{{ invoice()!.positions?.length ?? 0 }} Positionen</span>
     </div>
     <table class="data-table w-full">
       <thead>
@@ -137,7 +137,7 @@
         </tr>
       </thead>
       <tbody>
-        @for (p of invoice.positions ?? []; track p.description; let i = $index) {
+        @for (p of invoice()!.positions ?? []; track p.description; let i = $index) {
           <tr [class.anomaly-row]="p.isAnomaly">
             <td class="text-xs" style="color:var(--surface-muted)">{{ i + 1 }}</td>
             <td>{{ p.description }}</td>
@@ -165,7 +165,7 @@
   </div>
 
   <!-- PDF Viewer -->
-  @if (showPdf) {
+  @if (showPdf()) {
     <div class="card">
       <h2 class="section-title mb-4">Original-PDF</h2>
       <pdf-viewer [src]="pdfUrl" [render-text]="true" [original-size]="false"
