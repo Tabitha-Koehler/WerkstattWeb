@@ -1,13 +1,12 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, computed } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe, CurrencyPipe } from '@angular/common';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { switchMap, catchError, EMPTY } from 'rxjs';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { ApiService } from '../../core/services/api.service';
-import { Invoice, LatestInspections } from '../../core/models/models';
+import { LatestInspections } from '../../core/models/models';
 
 @Component({
   standalone: true,
@@ -22,27 +21,23 @@ export class VehicleDetailComponent {
 
   private vehicleId = this.route.snapshot.paramMap.get('id')!;
 
-  vehicle = toSignal(
-    this.api.getVehicle(this.vehicleId).pipe(
-      catchError(() => { this.router.navigate(['/vehicles']); return EMPTY; }),
-    ),
-  );
+  private vehicleRes     = rxResource({ stream: () => this.api.getVehicle(this.vehicleId) });
+  private invoicesRes    = rxResource({ stream: () => this.api.getInvoices(this.vehicleId) });
+  private inspectionsRes = rxResource({ stream: () => this.api.getLatestInspections(this.vehicleId) });
 
-  invoices = toSignal(
-    this.api.getInvoices(this.vehicleId),
-    { initialValue: [] as Invoice[] },
-  );
+  vehicle           = computed(() => this.vehicleRes.value());
+  invoices          = computed(() => this.invoicesRes.value() ?? []);
+  latestInspections = computed(() => this.inspectionsRes.value() ?? {} as LatestInspections);
+  loading           = computed(() => this.vehicleRes.isLoading());
+  totalCost         = computed(() => this.invoices().reduce((s, i) => s + (Number(i.totalAmount) || 0), 0));
+  anomalyCount      = computed(() => this.invoices().filter(i => i.hasAnomalies).length);
 
-  latestInspections = toSignal(
-    this.api.getLatestInspections(this.vehicleId),
-    { initialValue: {} as LatestInspections },
-  );
+  constructor() {
+    // Redirect if vehicle not found
+    if (this.vehicleRes.error()) this.router.navigate(['/vehicles']);
+  }
 
-  loading    = computed(() => this.vehicle() === undefined);
-  totalCost  = computed(() => this.invoices().reduce((s, i) => s + (Number(i.totalAmount) || 0), 0));
-  anomalyCount = computed(() => this.invoices().filter(i => i.hasAnomalies).length);
-
-  goToInvoice(inv: Invoice): void { this.router.navigate(['/invoices', inv.id]); }
+  goToInvoice(inv: { id: string }): void { this.router.navigate(['/invoices', inv.id]); }
 
   daysUntil(dateStr: string | undefined): number | null {
     if (!dateStr) return null;

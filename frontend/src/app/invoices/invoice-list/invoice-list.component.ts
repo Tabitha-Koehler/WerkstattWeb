@@ -2,7 +2,7 @@ import { Component, inject, signal, computed } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DatePipe, CurrencyPipe } from '@angular/common';
-import { toSignal } from '@angular/core/rxjs-interop';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { ApiService } from '../../core/services/api.service';
@@ -18,14 +18,15 @@ export class InvoiceListComponent {
   private api    = inject(ApiService);
   private router = inject(Router);
 
-  private allInvoices$ = toSignal(this.api.getInvoices(undefined, false));
+  filter            = signal('');
+  showOnlyAnomalies = signal(false);
 
-  filter              = signal('');
-  showOnlyAnomalies   = signal(false);
-  loading             = computed(() => this.allInvoices$() === undefined);
+  private invoicesRes = rxResource({ stream: () => this.api.getInvoices(undefined, false) });
+
+  loading = computed(() => this.invoicesRes.isLoading());
 
   filteredInvoices = computed(() => {
-    const invoices = this.allInvoices$() ?? [] as Invoice[];
+    const invoices = this.invoicesRes.value() ?? [] as Invoice[];
     const search   = this.filter().toLowerCase();
     return invoices.filter(inv => {
       const matchText = !search

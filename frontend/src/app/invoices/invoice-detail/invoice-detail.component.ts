@@ -1,8 +1,7 @@
 import { Component, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, CurrencyPipe } from '@angular/common';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { catchError, EMPTY } from 'rxjs';
+import { rxResource } from '@angular/core/rxjs-interop';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
@@ -17,24 +16,21 @@ import { ApiService } from '../../core/services/api.service';
 })
 export class InvoiceDetailComponent {
   readonly router = inject(Router);
-  private route   = inject(ActivatedRoute);
-  private api     = inject(ApiService);
+  private  route  = inject(ActivatedRoute);
+  private  api    = inject(ApiService);
 
   private id = this.route.snapshot.paramMap.get('id')!;
 
-  invoice = toSignal(
-    this.api.getInvoice(this.id).pipe(
-      catchError(() => { alert('Rechnung nicht gefunden'); this.router.navigate(['/invoices']); return EMPTY; }),
-    ),
-  );
+  private invoiceRes = rxResource({ stream: () => this.api.getInvoice(this.id) });
 
-  loading  = computed(() => this.invoice() === undefined);
+  invoice  = computed(() => this.invoiceRes.value());
+  loading  = computed(() => this.invoiceRes.isLoading());
   showPdf  = signal(false);
   pdfUrl   = this.api.getPdfUrl(this.id);
 
-  anomalies          = computed(() => this.invoice()?.positions?.filter(p => p.isAnomaly) ?? []);
+  anomalies           = computed(() => this.invoice()?.positions?.filter(p => p.isAnomaly) ?? []);
   inspectionPositions = computed(() => this.invoice()?.inspections ?? []);
-  supplies           = computed(() => this.invoice()?.operatingSupplies ?? []);
+  supplies            = computed(() => this.invoice()?.operatingSupplies ?? []);
 
   detailRows = computed(() => {
     const inv = this.invoice();

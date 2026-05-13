@@ -11,7 +11,8 @@
       "Bash(docker compose *)",
       "Bash(xargs grep -l \"standalone\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost/)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(node -e \"const p=require\\('C:/WerkstattWeb/frontend/node_modules/@angular/core/package.json'\\); console.log\\(p.version\\)\")"
     ]
   }
 }
