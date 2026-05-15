@@ -15,15 +15,18 @@
   </div>
 
   <!-- Drop zone -->
-  <div class="rounded-2xl border-2 border-dashed p-12 text-center cursor-pointer transition-all duration-200 select-none"
+  <div class="rounded-2xl border-2 border-dashed p-12 text-center transition-all duration-200 select-none"
+       style="position:relative; overflow:hidden;"
        [style.border-color]="dragOver() ? '#3b82f6' : 'var(--surface-border)'"
        [style.background]="dragOver() ? 'rgb(59 130 246 / 0.06)' : 'transparent'"
-       (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)"
-       (click)="openPicker(fileInput)">
+       (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)">
+    <!-- Unsichtbares File-Input überdeckt die gesamte Drop-Zone -->
+    <input type="file" accept=".pdf" multiple
+           style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;cursor:pointer;z-index:10;"
+           (change)="onFileSelect($event)">
     <i class="fa-solid text-5xl mb-3 block" [class]="dragOver() ? 'fa-folder-open text-blue-500' : 'fa-file-pdf'" style="color:var(--surface-muted)"></i>
     <p class="font-semibold" style="color:var(--surface-text)">PDF-Dateien hier ablegen oder klicken</p>
     <p class="text-sm mt-1" style="color:var(--surface-muted)">PDF/A · Mehrere Dateien gleichzeitig möglich</p>
-    <input #fileInput type="file" accept=".pdf" multiple style="display:none" (change)="onFileSelect($event)">
   </div>
 
   <!-- Queue -->
