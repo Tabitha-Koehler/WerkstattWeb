@@ -196,11 +196,14 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
     // Format A: Standard — Label dann Wert: "Kennzeichen: HAM-CK 505"
     const kennzeichenCtx = text.match(/(?:Kennzeichen|KFZ)[:\s]+([A-ZÄÖÜ]{1,3}[\s]*[-][\s]*[A-Z]{1,2}[\s]*\d{1,4}[HE]?)/i);
     const fzgMatch = text.match(/(?:FZG[\s.]*NR|Amtl\.?\s*Kennzeichen|Fahrzeugkennzeichen)[^\n]*\n?[^\n]*?([A-ZÄÖÜ]{2,3}-[A-Z]{1,3}[\s]\d{1,4}[HE]?)/i);
-    // Format B: Werneke-DMS (Spalten-Umkehrung) — Wert kommt VOR dem Label: "HAM-CK 506 FIN:  Kennzeichen:"
-    // Kennzeichen-Wert steht direkt vor "FIN:" im Textstrom
-    const reversedPlate = text.match(/([A-ZÄÖÜ]{1,3}-[A-Z]{1,2}\s\d{1,4}[HE]?)\s+FIN:/i);
+    // Format B: Werneke-DMS (Spalten-Umkehrung) — Wert kommt VOR dem Label
+    // Ältere PDFs: "WMAN18ZZ5CY277190HAM-CK 503FIN:" (kein Space)
+    // Neuere PDFs: "HAM-CK 506 FIN:" (mit Space)
+    const reversedPlate = text.match(/([A-ZÄÖÜ]{1,3}-[A-Z]{1,2}\s\d{1,4}[HE]?)\s*FIN:/i);
+    // Format C: Werneke 1-seitige Rechnungen — Kennzeichen als eigene Zeile nach dem Warnhinweis
+    const standalonePlate = text.match(/^([A-ZÄÖÜ]{1,3}-[A-Z]{1,2}\s\d{1,4}[HE]?)$/m);
     let licensePlate: string | null = null;
-    const rawPlate = (kennzeichenCtx?.[1] || fzgMatch?.[1] || reversedPlate?.[1] || '').trim();
+    const rawPlate = (kennzeichenCtx?.[1] || fzgMatch?.[1] || reversedPlate?.[1] || standalonePlate?.[1] || '').trim();
     if (rawPlate) {
       // Normalisieren: "HAM -CK 505" → "HAM-CK 505"
       const parts = rawPlate.match(/^([A-ZÄÖÜ]{1,3})\s*[-]\s*([A-Z]{1,3})\s+(\d{1,4}[HE]?)$/i);
@@ -319,7 +322,10 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
         /[a-z]{4}/i.test(l) &&
         !/^[!#$@*]/.test(l) &&
         !/^(?:Firma|Seite|Datum|Kunden|Rechnung|Kennzeichen|Marke|Modell|FIN|HRB|USt|Steuer|IBAN|BIC|DE[0-9]|Pos\s|Menge|Hausan)/i.test(l) &&
-        !/^\d+\s+[\d,]+\s+\w+/.test(l)
+        !/^\d+\s+[\d,]+\s+\w+/.test(l) &&
+        // Zahlungsbedingungen / Footer-Texte ausschließen
+        !/Zahlbar|ohne Abzug|Skonto|Bankverbindung|Zahlungsziel|innerhalb von|Fälligkeit|Bitte überweisen|Bequem überweisen|Bezahlcode/i.test(l) &&
+        !/^(?:DE\d{2}|[A-Z]{6,}[0-9]{6,})/.test(l)  // IBAN / BIC
       );
       repairContext = posLine ? posLine.substring(0, 120) : '';
     }
