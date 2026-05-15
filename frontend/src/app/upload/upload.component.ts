@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed, NgZone } from '@angular/core';
+import { Component, inject, ChangeDetectorRef } from '@angular/core';
 import { Router } from '@angular/router';
 import { CurrencyPipe } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
@@ -16,34 +16,29 @@ interface UploadItem {
 
 @Component({
   standalone: true,
-
   selector: 'app-upload',
   templateUrl: './upload.component.html',
   imports: [CurrencyPipe, ButtonModule, TagModule, ProgressBarModule],
 })
 export class UploadComponent {
-  private api    = inject(ApiService);
+  private api = inject(ApiService);
   private router = inject(Router);
-  private zone   = inject(NgZone);
+  private cdr = inject(ChangeDetectorRef);
 
-  queue     = signal<UploadItem[]>([]);
-  dragOver  = signal(false);
-  uploading = signal(false);
+  queue: UploadItem[] = [];
+  dragOver = false;
+  uploading = false;
 
-  pendingCount = computed(() => this.queue().filter(i => i.status === 'pending').length);
-  doneCount    = computed(() => this.queue().filter(i => i.status === 'done').length);
-  errorCount   = computed(() => this.queue().filter(i => i.status === 'error').length);
+  get pendingCount() { return this.queue.filter(i => i.status === 'pending').length; }
+  get doneCount()    { return this.queue.filter(i => i.status === 'done').length; }
+  get errorCount()   { return this.queue.filter(i => i.status === 'error').length; }
 
-  openPicker(input: HTMLInputElement): void {
-    this.zone.runOutsideAngular(() => input.click());
-  }
-
-  onDragOver(e: DragEvent): void { e.preventDefault(); this.dragOver.set(true); }
-  onDragLeave(): void { this.dragOver.set(false); }
+  onDragOver(e: DragEvent): void { e.preventDefault(); this.dragOver = true; }
+  onDragLeave(): void { this.dragOver = false; }
 
   onDrop(e: DragEvent): void {
     e.preventDefault();
-    this.dragOver.set(false);
+    this.dragOver = false;
     this.addFiles(Array.from(e.dataTransfer?.files ?? []));
   }
 
@@ -51,21 +46,23 @@ export class UploadComponent {
     const input = e.target as HTMLInputElement;
     this.addFiles(Array.from(input.files ?? []));
     input.value = '';
+    this.cdr.detectChanges();
   }
 
   addFiles(files: File[]): void {
     const pdfs = files.filter(f => f.name.toLowerCase().endsWith('.pdf'));
-    this.queue.update(q => [...q, ...pdfs.map(f => ({ file: f, status: 'pending' as const }))]);
+    this.queue = [...this.queue, ...pdfs.map(f => ({ file: f, status: 'pending' as const }))];
+    this.cdr.detectChanges();
   }
 
   removeItem(idx: number): void {
-    this.queue.update(q => q.filter((_, i) => i !== idx));
+    this.queue = this.queue.filter((_, i) => i !== idx);
   }
 
   async uploadAll(): Promise<void> {
-    const pending = this.queue().filter(i => i.status === 'pending');
+    const pending = this.queue.filter(i => i.status === 'pending');
     if (!pending.length) return;
-    this.uploading.set(true);
+    this.uploading = true;
 
     for (const item of pending) {
       this.updateItem(item, { status: 'uploading' });
@@ -76,11 +73,13 @@ export class UploadComponent {
         this.updateItem(item, { status: 'error', error: err?.error?.message ?? err?.message ?? 'Fehler' });
       }
     }
-    this.uploading.set(false);
+    this.uploading = false;
+    this.cdr.detectChanges();
   }
 
   private updateItem(item: UploadItem, patch: Partial<UploadItem>): void {
-    this.queue.update(q => q.map(i => i === item ? { ...i, ...patch } : i));
+    this.queue = this.queue.map(i => i === item ? { ...i, ...patch } : i);
+    this.cdr.detectChanges();
   }
 
   goToResult(item: UploadItem): void {
