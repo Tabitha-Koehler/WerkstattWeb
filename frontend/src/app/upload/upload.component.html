@@ -1,5 +1,9 @@
 <div class="max-w-2xl mx-auto space-y-5">
 
+  <!-- DEBUG: einfachster möglicher File-Input -->
+  <input type="file" accept=".pdf" multiple (change)="onFileSelect($event)" style="border:3px solid red; padding:8px; display:block;">
+
+
   <div>
     <h1 class="page-title">Rechnungen hochladen</h1>
     <p class="page-subtitle">PDF/A-Rechnungen manuell verarbeiten</p>
