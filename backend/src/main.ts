@@ -35,6 +35,10 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
+  // Einfacher Health-Endpunkt für Railway/Monitoring (ohne DB-Zugriff)
+  const httpAdapter = app.getHttpAdapter();
+  httpAdapter.get('/health', (_req: any, res: any) => res.send({ status: 'ok' }));
+
   const port = process.env.PORT || 3000;
   await app.listen(port);
   logger.log(`WerkstattWeb Backend läuft auf http://localhost:${port}/api`);
