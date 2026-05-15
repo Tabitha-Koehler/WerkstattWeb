@@ -78,4 +78,26 @@ export class WarehouseComponent {
   vehicleLabel(v: Vehicle): string {
     return v.licensePlate + (v.name ? ` – ${v.name}` : '');
   }
+
+  reassigning = signal(false);
+  reassignResult = signal<string | null>(null);
+
+  runReassign(): void {
+    this.reassigning.set(true);
+    this.reassignResult.set(null);
+    this.api.reassignWarehouseInvoices().subscribe({
+      next: (res) => {
+        this.reassigning.set(false);
+        this.reassignResult.set(res.message);
+        // Seite neu laden damit Tabelle aktuell ist
+        if (res.assigned > 0) {
+          setTimeout(() => window.location.reload(), 1500);
+        }
+      },
+      error: () => {
+        this.reassigning.set(false);
+        this.reassignResult.set('Fehler bei der Neu-Zuordnung.');
+      },
+    });
+  }
 }

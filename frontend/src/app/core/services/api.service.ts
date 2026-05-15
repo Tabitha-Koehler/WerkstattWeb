@@ -106,6 +106,10 @@ export class ApiService {
     return this.http.patch<Invoice>(`${this.base}/invoices/${invoiceId}/assign`, { vehicleId });
   }
 
+  reassignWarehouseInvoices(): Observable<{ message: string; assigned: number; skipped: number }> {
+    return this.http.post<{ message: string; assigned: number; skipped: number }>(`${this.base}/invoices/reassign-warehouse`, {});
+  }
+
   getPdfUrl(id: string): string {
     return `${this.base}/invoices/${id}/pdf`;
   }

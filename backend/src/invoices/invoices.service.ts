@@ -340,6 +340,64 @@ export class InvoicesService {
     return { total, withAnomalies, warehouse, errors };
   }
 
+  // ── Lager-Rechnungen neu zuordnen (FIN/Kennzeichen-Lookup) ────────────────
+  async reassignWarehouseInvoices(): Promise<{ message: string; assigned: number; skipped: number }> {
+    const warehouseInvoices = await this.invoiceRepo.find({
+      where: { isWarehouse: true },
+      select: ['id', 'pdfPath', 'originalFilename', 'rawText'],
+    });
+
+    let assigned = 0;
+    let skipped = 0;
+
+    for (const inv of warehouseInvoices) {
+      if (!inv.pdfPath || !fs.existsSync(inv.pdfPath)) { skipped++; continue; }
+
+      try {
+        // ZUGFeRD neu auslesen
+        const zugferd = await this.pdfParser.extractZugferdData(inv.pdfPath);
+        let licensePlate = zugferd?.licensePlate;
+
+        // FIN-Lookup
+        if (!licensePlate && zugferd?.vehicleFin) {
+          const vehicleByFin = await this.vehicleRepo.findOne({ where: { vin: zugferd.vehicleFin } });
+          if (vehicleByFin) licensePlate = vehicleByFin.licensePlate;
+        }
+
+        // Regelbasierter Kennzeichen-Lookup aus Rohtext (inkl. reversed-Format)
+        if (!licensePlate) {
+          const rawText = inv.rawText ?? (inv.pdfPath && fs.existsSync(inv.pdfPath)
+            ? await this.pdfParser.extractText(inv.pdfPath) : '');
+          if (rawText) {
+            const analysis = await this.aiAnalysis.analyzeInvoice(rawText, inv.originalFilename ?? '');
+            licensePlate = analysis.licensePlate;
+          }
+        }
+
+        if (!licensePlate) { skipped++; continue; }
+
+        const normalized = licensePlate.toUpperCase().trim();
+        await this.vehicleRepo.createQueryBuilder().insert().into(Vehicle)
+          .values({ licensePlate: normalized }).orIgnore().execute();
+        const vehicle = await this.vehicleRepo.findOne({ where: { licensePlate: normalized } });
+
+        if (vehicle) {
+          await this.invoiceRepo.update(inv.id, { vehicleId: vehicle.id, isWarehouse: false });
+          this.logger.log(`Lager-Rechnung ${inv.originalFilename} → ${normalized}`);
+          assigned++;
+        } else {
+          skipped++;
+        }
+      } catch (err) {
+        this.logger.warn(`Reassign-Fehler bei ${inv.originalFilename}: ${err.message}`);
+        skipped++;
+      }
+    }
+
+    this.logger.log(`Neu-Zuordnung abgeschlossen: ${assigned} zugeordnet, ${skipped} übersprungen`);
+    return { message: `Fertig: ${assigned} Rechnungen zugeordnet, ${skipped} ohne Treffer.`, assigned, skipped };
+  }
+
   // ── Reprocess Progress ─────────────────────────────────────────────────────
   private reprocessStatus: {
     running: boolean;

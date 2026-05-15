@@ -1,9 +1,28 @@
 <div class="space-y-5">
 
   <!-- Header -->
-  <div>
-    <h1 class="page-title">Lager</h1>
-    <p class="page-subtitle">Rechnungen ohne Fahrzeugkennzeichen</p>
+  <div class="flex items-start justify-between gap-4">
+    <div>
+      <h1 class="page-title">Lager</h1>
+      <p class="page-subtitle">Rechnungen ohne Fahrzeugkennzeichen</p>
+    </div>
+    <div class="flex flex-col items-end gap-2">
+      <button
+        class="btn-primary flex items-center gap-2"
+        [disabled]="reassigning()"
+        (click)="runReassign()">
+        @if (reassigning()) {
+          <div class="spinner" style="width:1rem;height:1rem;border-width:2px"></div>
+          <span>Läuft…</span>
+        } @else {
+          <i class="fa-solid fa-rotate"></i>
+          <span>Alle automatisch zuordnen</span>
+        }
+      </button>
+      @if (reassignResult()) {
+        <span class="text-sm" style="color:var(--text-color-secondary)">{{ reassignResult() }}</span>
+      }
+    </div>
   </div>
 
   <!-- Stats -->

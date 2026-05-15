@@ -193,11 +193,14 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
     const parseDE = (s: string) => parseFloat(s.replace(/\./g, '').replace(',', '.'));
 
     // ── Kennzeichen ────────────────────────────────────────────────────────
-    // Nur explizit gelabeltes Kennzeichen (kein generisches Matching → zu viele Falsch-Positive)
+    // Format A: Standard — Label dann Wert: "Kennzeichen: HAM-CK 505"
     const kennzeichenCtx = text.match(/(?:Kennzeichen|KFZ)[:\s]+([A-ZÄÖÜ]{1,3}[\s]*[-][\s]*[A-Z]{1,2}[\s]*\d{1,4}[HE]?)/i);
     const fzgMatch = text.match(/(?:FZG[\s.]*NR|Amtl\.?\s*Kennzeichen|Fahrzeugkennzeichen)[^\n]*\n?[^\n]*?([A-ZÄÖÜ]{2,3}-[A-Z]{1,3}[\s]\d{1,4}[HE]?)/i);
+    // Format B: Werneke-DMS (Spalten-Umkehrung) — Wert kommt VOR dem Label: "HAM-CK 506 FIN:  Kennzeichen:"
+    // Kennzeichen-Wert steht direkt vor "FIN:" im Textstrom
+    const reversedPlate = text.match(/([A-ZÄÖÜ]{1,3}-[A-Z]{1,2}\s\d{1,4}[HE]?)\s+FIN:/i);
     let licensePlate: string | null = null;
-    const rawPlate = (kennzeichenCtx?.[1] || fzgMatch?.[1] || '').trim();
+    const rawPlate = (kennzeichenCtx?.[1] || fzgMatch?.[1] || reversedPlate?.[1] || '').trim();
     if (rawPlate) {
       // Normalisieren: "HAM -CK 505" → "HAM-CK 505"
       const parts = rawPlate.match(/^([A-ZÄÖÜ]{1,3})\s*[-]\s*([A-Z]{1,3})\s+(\d{1,4}[HE]?)$/i);
@@ -262,6 +265,7 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
 
     // ── km-Stand ───────────────────────────────────────────────────────────
     let mileage: number | null = null;
+    // Format A: Standard — Label dann Wert: "Km-Stand: 418341"
     const kmMatch = text.match(/km[-\s]?Stand[:\s]+(\d[\d.]+)/i);
     if (kmMatch) {
       mileage = parseInt(kmMatch[1].replace(/\./g, ''), 10);
@@ -270,6 +274,12 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
     if (!mileage) {
       const tacho = text.match(/(?:Tachostand|Kilometerstand|KM-Stand)[:\s]+(\d[\d.]+)/i);
       if (tacho) mileage = parseInt(tacho[1].replace(/\./g, ''), 10);
+    }
+    // Format B: Werneke-DMS (Spalten-Umkehrung) — Wert steht vor "Km-Stand:" Label
+    // z.B. "614083 DAIMLER TRUCK   02.03.2009   HU:   Km-Stand:"
+    if (!mileage) {
+      const kmReversed = text.match(/\b(\d{5,7})\b[\s\S]{0,80}?Km[-\s]?Stand:/i);
+      if (kmReversed) mileage = parseInt(kmReversed[1].replace(/\./g, ''), 10);
     }
 
     // ── Gesamtbetrag ───────────────────────────────────────────────────────

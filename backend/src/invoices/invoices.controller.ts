@@ -61,6 +61,11 @@ export class InvoicesController {
     return this.invoicesService.startReprocess();
   }
 
+  @Post('reassign-warehouse')
+  reassignWarehouse() {
+    return this.invoicesService.reassignWarehouseInvoices();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.invoicesService.findOne(id);
