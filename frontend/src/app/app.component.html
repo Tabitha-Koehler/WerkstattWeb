@@ -1,8 +1,8 @@
 <div class="flex h-screen overflow-hidden" style="background:var(--surface-bg)">
 
   <!-- ── Sidebar ─────────────────────────────────────────── -->
-  <aside class="w-60 flex flex-col shrink-0 border-r transition-colors duration-200"
-         style="background:var(--surface-sidebar); border-color:var(--surface-sidebar-border)">
+  <aside class="w-60 flex flex-col shrink-0 transition-colors duration-200"
+         style="background:var(--surface-sidebar); border-right:1px solid var(--surface-sidebar-border)">
 
     <!-- Portal Switcher -->
     <div style="position:relative">
@@ -72,7 +72,7 @@
 
       <!-- Theme toggle -->
       <button class="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm transition-colors"
-              style="color:var(--surface-muted); background:transparent; border:0; cursor:pointer;"
+              style="color:var(--surface-sidebar-muted); background:transparent; border:0; cursor:pointer;"
               (click)="theme.toggle()"
               [title]="theme.isDark() ? 'Light Mode aktivieren' : 'Dark Mode aktivieren'">
         <i class="fa-solid text-base w-5 text-center"

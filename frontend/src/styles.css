@@ -23,10 +23,16 @@
   --surface-text:           #0f172a;
   --surface-muted:          #64748b;
   --surface-hover:          #f8fafc;
-  --surface-sidebar:        #ffffff;
-  --surface-sidebar-border: #e2e8f0;
   --surface-input:          #ffffff;
   --font-family-sans: 'Inter', system-ui, -apple-system, sans-serif;
+
+  /* Sidebar: immer dunkel (wie cargo-dispo) */
+  --surface-sidebar:        #111827;
+  --surface-sidebar-border: #1f2937;
+  --surface-sidebar-text:   #ffffff;
+  --surface-sidebar-muted:  #9ca3af;
+  --surface-sidebar-hover:  #1f2937;
+  --surface-sidebar-active: #16a34a;
 }
 
 /* ── CSS Variables: Dark Mode ─────────────────────────────── */
@@ -37,9 +43,15 @@
   --surface-text:           #f1f5f9;
   --surface-muted:          #94a3b8;
   --surface-hover:          #283447;
-  --surface-sidebar:        #1e293b;
-  --surface-sidebar-border: #334155;
   --surface-input:          #0f172a;
+
+  /* Sidebar bleibt dunkel */
+  --surface-sidebar:        #111827;
+  --surface-sidebar-border: #1f2937;
+  --surface-sidebar-text:   #ffffff;
+  --surface-sidebar-muted:  #9ca3af;
+  --surface-sidebar-hover:  #1f2937;
+  --surface-sidebar-active: #16a34a;
 }
 
 /* ── Base ─────────────────────────────────────────────────── */
@@ -129,7 +141,7 @@ body {
     @apply w-10 h-10 rounded-full border-4 border-blue-500 border-t-transparent animate-spin;
   }
 
-  /* Nav items */
+  /* Nav items — dunkle Sidebar wie cargo-dispo */
   .nav-item {
     display: flex;
     align-items: center;
@@ -137,25 +149,21 @@ body {
     padding: 0.5rem 0.75rem;
     border-radius: 0.625rem;
     text-decoration: none;
-    color: var(--surface-muted);
+    color: var(--surface-sidebar-muted);
     transition: background-color 0.15s, color 0.15s;
     cursor: pointer;
   }
 
   .nav-item:hover {
-    background: var(--surface-hover);
-    color: var(--surface-text);
+    background: var(--surface-sidebar-hover);
+    color: var(--surface-sidebar-text);
   }
 
+  /* Grüner Akzent für Werkstatt-Portal */
   .nav-active {
-    background: rgb(37 99 235 / 0.1) !important;
-    color: #2563eb !important;
+    background: var(--surface-sidebar-active) !important;
+    color: #ffffff !important;
     font-weight: 600;
-  }
-
-  .dark .nav-active {
-    background: rgb(59 130 246 / 0.15) !important;
-    color: #60a5fa !important;
   }
 
   /* Tables */
