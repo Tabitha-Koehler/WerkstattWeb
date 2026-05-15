@@ -35,6 +35,7 @@
         <thead>
           <tr>
             <th style="width:9rem">Datum</th>
+            <th style="width:9rem">Re.-Nr.</th>
             <th style="width:9rem">Kennzeichen</th>
             <th>Werkstatt</th>
             <th>Reparatur</th>
@@ -47,6 +48,9 @@
             <tr (click)="goToDetail(inv)" [class.anomaly-row]="inv.hasAnomalies">
               <td class="whitespace-nowrap" style="color:var(--surface-muted)">
                 {{ inv.invoiceDate | date:'dd.MM.yyyy' }}
+              </td>
+              <td style="color:var(--surface-muted); font-size:0.8rem">
+                {{ inv.invoiceNumber ?? '–' }}
               </td>
               <td>
                 <span class="font-bold text-blue-600 dark:text-blue-400">
