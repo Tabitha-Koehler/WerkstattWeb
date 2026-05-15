@@ -1,28 +1,37 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { RouterLink } from '@angular/router';
-import { CurrencyPipe } from '@angular/common';
+import { Component, inject, OnInit, signal } from '@angular/core';
+import { RouterLink, Router } from '@angular/router';
+import { CurrencyPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
+import { TagModule } from 'primeng/tag';
+import { TooltipModule } from 'primeng/tooltip';
 import { ApiService } from '../core/services/api.service';
-import { WorkshopStats, VehicleCostStats, MonthlyCost } from '../core/models/models';
+import { WorkshopStats, VehicleCostStats, MonthlyCost, FraudSummary, RepeatedRepair, WorkshopAlert, PriceAnomaly } from '../core/models/models';
 
 @Component({
   standalone: true,
   selector: 'app-analytics',
   templateUrl: './analytics.component.html',
-  imports: [RouterLink, CurrencyPipe, ButtonModule],
+  imports: [RouterLink, CurrencyPipe, DatePipe, DecimalPipe, ButtonModule, TagModule, TooltipModule],
 })
 export class AnalyticsComponent implements OnInit {
-  private api = inject(ApiService);
+  private api    = inject(ApiService);
+  readonly router = inject(Router);
 
-  loading = true;
-  workshops: WorkshopStats[] = [];
+  loading       = true;
+  fraudLoading  = signal(true);
+
+  workshops: WorkshopStats[]     = [];
   vehicleCosts: VehicleCostStats[] = [];
-  monthlyCosts: MonthlyCost[] = [];
+  monthlyCosts: MonthlyCost[]    = [];
+  fraudSummary: FraudSummary | null = null;
 
-  totalCostAll = 0;
+  totalCostAll      = 0;
   maxWorkshopAmount = 0;
-  maxVehicleAmount = 0;
-  maxMonthlyAmount = 0;
+  maxVehicleAmount  = 0;
+  maxMonthlyAmount  = 0;
+
+  // Fraud section state
+  activeAlertTab = signal<'repeated' | 'workshop' | 'price'>('repeated');
 
   ngOnInit(): void {
     let pending = 3;
@@ -49,11 +58,16 @@ export class AnalyticsComponent implements OnInit {
 
     this.api.getMonthlyCosts().subscribe({
       next: (data) => {
-        this.monthlyCosts = data.slice(-18); // letzte 18 Monate
+        this.monthlyCosts = data.slice(-18);
         this.maxMonthlyAmount = Math.max(...data.map(m => m.totalAmount), 1);
         done();
       },
       error: () => done(),
+    });
+
+    this.api.getFraudAlerts().subscribe({
+      next: (data) => { this.fraudSummary = data; this.fraudLoading.set(false); },
+      error: () => { this.fraudLoading.set(false); },
     });
   }
 
@@ -66,5 +80,31 @@ export class AnalyticsComponent implements OnInit {
     const [y, m] = month.split('-');
     const names = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez'];
     return `${names[parseInt(m) - 1]} ${y}`;
+  }
+
+  severityColor(s: string): string {
+    return s === 'danger' ? 'text-red-600 dark:text-red-400'
+         : s === 'warn'   ? 'text-amber-600 dark:text-amber-400'
+         :                  'text-blue-600 dark:text-blue-400';
+  }
+
+  severityBg(s: string): string {
+    return s === 'danger' ? 'bg-red-500/10 dark:bg-red-500/20'
+         : s === 'warn'   ? 'bg-amber-500/10 dark:bg-amber-500/20'
+         :                  'bg-blue-500/10 dark:bg-blue-500/20';
+  }
+
+  severityIcon(s: string): string {
+    return s === 'danger' ? 'fa-circle-xmark'
+         : s === 'warn'   ? 'fa-triangle-exclamation'
+         :                  'fa-circle-info';
+  }
+
+  goToInvoice(invoiceId: string): void {
+    this.router.navigate(['/invoices', invoiceId]);
+  }
+
+  goToVehicle(vehicleId: string): void {
+    this.router.navigate(['/vehicles', vehicleId]);
   }
 }

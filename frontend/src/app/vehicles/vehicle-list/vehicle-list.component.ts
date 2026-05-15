@@ -32,6 +32,27 @@ export class VehicleListComponent {
   dialogOpen     = signal(false);
   editingVehicle = signal<Vehicle | null>(null);
 
+  enriching     = signal(false);
+  enrichResult  = signal<string | null>(null);
+
+  enrichAllFromInvoices(): void {
+    if (this.enriching()) return;
+    this.enriching.set(true);
+    this.enrichResult.set(null);
+    this.api.enrichAllVehiclesFromInvoices().subscribe({
+      next: (res) => {
+        this.enriching.set(false);
+        if (res.updated > 0) {
+          this.enrichResult.set(`✓ ${res.updated} Fahrzeug(e) aktualisiert`);
+          this.reload();
+        } else {
+          this.enrichResult.set('Keine neuen Daten gefunden');
+        }
+      },
+      error: () => { this.enriching.set(false); this.enrichResult.set('Fehler'); },
+    });
+  }
+
   openDialog(vehicle?: Vehicle): void {
     this.editingVehicle.set(vehicle ?? null);
     this.dialogOpen.set(true);

@@ -83,6 +83,139 @@ export class VehiclesService {
       .getMany();
   }
 
+  // ── Fahrzeugdaten aus Rechnungen befüllen ────────────────────────────────
+  async enrichFromInvoices(vehicleId?: string): Promise<{ updated: number; details: string[] }> {
+    const WMI_MAP: Record<string, string> = {
+      WMA: 'MAN', WMX: 'MAN', W09: 'MAN', WMN: 'MAN',
+      WDB: 'Mercedes-Benz', WEB: 'Mercedes-Benz', WDF: 'Mercedes-Benz', WDD: 'Mercedes-Benz',
+      YS2: 'Scania', XLR: 'DAF', XLE: 'DAF', XL9: 'DAF',
+      WAU: 'Audi', WVW: 'Volkswagen', WBA: 'BMW', WBS: 'BMW',
+      WJM: 'Iveco', YV2: 'Volvo', VBN: 'Volvo', VSK: 'Renault Trucks',
+      WSM: 'Schmitz Cargobull', WK0: 'Kögel', WK1: 'Kögel',
+      KNA: 'Kia', KNM: 'Kia', W0L: 'Opel',
+    };
+
+    const VIN_YEAR_MAP: Record<string, number> = {
+      A: 2010, B: 2011, C: 2012, D: 2013, E: 2014, F: 2015, G: 2016, H: 2017,
+      J: 2018, K: 2019, L: 2020, M: 2021, N: 2022, P: 2023, R: 2024, S: 2025,
+      T: 2026, V: 2027, W: 2028, X: 2029, Y: 2030,
+      '1': 2031, '2': 2032, '3': 2033, '4': 2034, '5': 2035,
+      '6': 2036, '7': 2037, '8': 2038, '9': 2039,
+    };
+
+    const extractFromText = (text: string): { vin: string | null; manufacturer: string | null; model: string | null; year: number | null } => {
+      // VIN: 17-char alphanumeric (no I, O, Q)
+      // Try multiple patterns — Werneke has VIN directly before license plate (no separator)
+      const vinPatterns = [
+        /([A-HJ-NPR-Z0-9]{17})[A-Z]{2,4}-/,             // Werneke: VIN immediately before plate "WMA18XZZ0HM742932HAM-CK"
+        /FIN[:\s\/]+([A-HJ-NPR-Z0-9]{17})/i,            // "FIN: WMA18XZZ0HM742932"
+        /Fahrgestellnummer[:\s\/]+([A-HJ-NPR-Z0-9]{17})/i,
+        /VIN[:\s\/]+([A-HJ-NPR-Z0-9]{17})/i,
+        /(?:^|\s)([A-HJ-NPR-Z0-9]{17})(?:\s|$)/m,       // standalone, surrounded by whitespace
+      ];
+      let vin: string | null = null;
+      for (const pat of vinPatterns) {
+        const m = text.match(pat);
+        if (m) { vin = m[1]; break; }
+      }
+      if (!vin) return { vin: null, manufacturer: null, model: null, year: null };
+
+      // Year from VIN position 9 (10th character); subtract 30 if future (cycle repeats every 30yr)
+      const currentYear = new Date().getFullYear();
+      let year = VIN_YEAR_MAP[vin[9]] ?? null;
+      if (year && year > currentYear) year -= 30;
+
+      // Manufacturer from WMI
+      const wmi = vin.substring(0, 3);
+      let manufacturer: string | null = WMI_MAP[wmi] ?? null;
+
+      // Try to extract manufacturer from text (Werneke: "MAN   19.04.2017HU:")
+      const BAD_MFG = new Set(['TRUCK', 'CENTER', 'GMBH', 'AG', 'KG', 'UG', 'WERKSTATT', 'SERVICE', 'AUTO']);
+      const mfgMatch = text.match(/([A-ZÄÖÜ][A-Za-zÄÖÜäöüß\-]{1,25})\s+\d{2}\.\d{2}\.\d{4}HU:/);
+      if (mfgMatch && !BAD_MFG.has(mfgMatch[1].toUpperCase())) {
+        manufacturer = mfgMatch[1].trim();
+        // Normalize known abbreviations
+        if (manufacturer === 'BENZ' || manufacturer === 'MERCEDES') manufacturer = 'Mercedes-Benz';
+        else if (manufacturer === 'MERCEDES-BENZ') manufacturer = 'Mercedes-Benz';
+        else if (manufacturer === 'MAN') manufacturer = 'MAN';
+        else if (manufacturer === 'SCANIA') manufacturer = 'Scania';
+        else if (manufacturer === 'IVECO' || manufacturer === 'IVECO-MAGIRUS') manufacturer = 'Iveco';
+        else if (manufacturer === 'OPEL') manufacturer = 'Opel';
+      } else {
+        // Try "Marke:" label
+        const markeMatch = text.match(/Marke[:\s]+([A-Za-zÄÖÜäöüß][A-Za-zÄÖÜäöüß\s\-]{1,25}?)(?:\r?\n|Baujahr|Jahr|Modell|$)/im);
+        if (markeMatch) manufacturer = markeMatch[1].trim();
+      }
+
+      // Model: text on same line just before VIN (Werneke format: "TGX   WMA18XZZ0HM742932")
+      // Use [ \t] instead of \s to avoid crossing newlines
+      let model: string | null = null;
+      const modelLineMatch = text.match(/^([A-Za-z0-9][A-Za-z0-9 \t\/.-]{1,25}?)[ \t]{2,}[A-HJ-NPR-Z0-9]{17}/m);
+      if (modelLineMatch) {
+        const candidate = modelLineMatch[1].trim();
+        const hasLetter = /[A-Za-z]/.test(candidate);
+        const isPlate = /^\w{2,4}-\w/.test(candidate);          // license plate pattern
+        const isInvoiceNum = /^\d{4,}$/.test(candidate);        // pure number like "26-70317"
+        if (hasLetter && !isPlate && !isInvoiceNum && candidate.length >= 2) {
+          model = candidate;
+        }
+      }
+      if (!model) {
+        // Try "Modell:" label — must be on same line, no newlines in value
+        const modellMatch = text.match(/Modell[:\s]+([A-Za-z][A-Za-z0-9 \t\/.-]{1,30}?)(?:\r?\n|FIN:|VIN:|Baujahr|$)/im);
+        if (modellMatch) {
+          const m = modellMatch[1].trim();
+          if (m.length >= 2) model = m;
+        }
+      }
+
+      return { vin, manufacturer, model, year };
+    };
+
+    const vehicles = await this.vehicleRepo.find(vehicleId ? { where: { id: vehicleId } } : {});
+    let updated = 0;
+    const details: string[] = [];
+
+    for (const vehicle of vehicles) {
+      const needsEnrichment = !vehicle.vin || !vehicle.manufacturer || !vehicle.model || !vehicle.year;
+      if (!needsEnrichment) continue;
+
+      const invoices = await this.invoiceRepo.find({
+        where: { vehicleId: vehicle.id },
+        select: ['id', 'rawText'],
+      });
+
+      let bestVin: string | null = null;
+      let bestManufacturer: string | null = null;
+      let bestModel: string | null = null;
+      let bestYear: number | null = null;
+
+      for (const inv of invoices) {
+        if (!inv.rawText) continue;
+        const extracted = extractFromText(inv.rawText);
+        if (extracted.vin && !bestVin) bestVin = extracted.vin;
+        if (extracted.manufacturer && !bestManufacturer) bestManufacturer = extracted.manufacturer;
+        if (extracted.model && !bestModel) bestModel = extracted.model;
+        if (extracted.year && !bestYear) bestYear = extracted.year;
+        if (bestVin && bestManufacturer && bestModel && bestYear) break;
+      }
+
+      const changes: string[] = [];
+      if (bestVin && !vehicle.vin)                   { vehicle.vin = bestVin;                   changes.push(`FIN: ${bestVin}`); }
+      if (bestManufacturer && !vehicle.manufacturer) { vehicle.manufacturer = bestManufacturer; changes.push(`Marke: ${bestManufacturer}`); }
+      if (bestModel && !vehicle.model)               { vehicle.model = bestModel;               changes.push(`Modell: ${bestModel}`); }
+      if (bestYear && !vehicle.year)                 { vehicle.year = bestYear;                 changes.push(`Baujahr: ${bestYear}`); }
+
+      if (changes.length > 0) {
+        await this.vehicleRepo.save(vehicle);
+        updated++;
+        details.push(`${vehicle.licensePlate}: ${changes.join(', ')}`);
+      }
+    }
+
+    return { updated, details };
+  }
+
   // ── Fahrzeug-Zeitstrahl ────────────────────────────────────────────────────
   async getTimeline(vehicleId: string): Promise<TimelineEvent[]> {
     await this.findOne(vehicleId); // 404 wenn nicht gefunden

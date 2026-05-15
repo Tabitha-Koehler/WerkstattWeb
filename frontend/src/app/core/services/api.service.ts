@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Vehicle, Invoice, InvoiceStats, Inspection, LatestInspections, TireHistory, MileageHistory, ReprocessStatus, TimelineEvent, WorkshopStats, VehicleCostStats, CostPerKm, MonthlyCost } from '../models/models';
+import { Vehicle, Invoice, InvoiceStats, Inspection, LatestInspections, TireHistory, MileageHistory, ReprocessStatus, TimelineEvent, WorkshopStats, VehicleCostStats, CostPerKm, MonthlyCost, FraudSummary, RepeatedRepair, WorkshopAlert, PriceAnomaly, InvoiceFraudCheck } from '../models/models';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -128,6 +128,14 @@ export class ApiService {
     return this.http.get<TimelineEvent[]>(`${this.base}/vehicles/${vehicleId}/history`);
   }
 
+  enrichVehicleFromInvoices(vehicleId: string): Observable<{ updated: number; details: string[] }> {
+    return this.http.post<{ updated: number; details: string[] }>(`${this.base}/vehicles/${vehicleId}/enrich-from-invoices`, {});
+  }
+
+  enrichAllVehiclesFromInvoices(): Observable<{ updated: number; details: string[] }> {
+    return this.http.post<{ updated: number; details: string[] }>(`${this.base}/vehicles/enrich-from-invoices`, {});
+  }
+
   // ── Analytics ───────────────────────────────────────────────
   getWorkshopStats(): Observable<WorkshopStats[]> {
     return this.http.get<WorkshopStats[]>(`${this.base}/analytics/workshops`);
@@ -145,5 +153,26 @@ export class ApiService {
     let params = new HttpParams();
     if (vehicleId) params = params.set('vehicleId', vehicleId);
     return this.http.get<MonthlyCost[]>(`${this.base}/analytics/monthly`, { params });
+  }
+
+  // ── Betrugs- und Plausibilitätsprüfung ───────────────────────────────────
+  getFraudAlerts(): Observable<FraudSummary> {
+    return this.http.get<FraudSummary>(`${this.base}/analytics/fraud-alerts`);
+  }
+
+  getRepeatedRepairs(days = 90): Observable<RepeatedRepair[]> {
+    return this.http.get<RepeatedRepair[]>(`${this.base}/analytics/repeated-repairs?days=${days}`);
+  }
+
+  getWorkshopAlerts(): Observable<WorkshopAlert[]> {
+    return this.http.get<WorkshopAlert[]>(`${this.base}/analytics/workshop-alerts`);
+  }
+
+  getPriceAnomalies(): Observable<PriceAnomaly[]> {
+    return this.http.get<PriceAnomaly[]>(`${this.base}/analytics/price-anomalies`);
+  }
+
+  runInvoiceFraudCheck(invoiceId: string): Observable<InvoiceFraudCheck> {
+    return this.http.post<InvoiceFraudCheck>(`${this.base}/invoices/${invoiceId}/fraud-check`, {});
   }
 }

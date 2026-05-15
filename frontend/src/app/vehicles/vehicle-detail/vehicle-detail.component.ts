@@ -43,6 +43,9 @@ export class VehicleDetailComponent implements OnInit {
   savingTire      = signal(false);
   savingMileage   = signal(false);
 
+  enriching     = signal(false);
+  enrichResult  = signal<string | null>(null);
+
   readonly axleOptions = Object.entries(TIRE_AXLE_LABELS).map(([v, l]) => ({ value: v, label: l }));
   readonly seasonOptions = Object.entries(TIRE_SEASON_LABELS).map(([v, l]) => ({ value: v, label: l }));
   readonly axleLabel = TIRE_AXLE_LABELS;
@@ -163,6 +166,25 @@ export class VehicleDetailComponent implements OnInit {
   deleteMileageEntry(id: string): void {
     this.api.deleteMileageEntry(this.vehicleId, id).subscribe({
       next: () => this.loadMileageHistory(),
+    });
+  }
+
+  enrichFromInvoices(): void {
+    if (this.enriching()) return;
+    this.enriching.set(true);
+    this.enrichResult.set(null);
+    this.api.enrichVehicleFromInvoices(this.vehicleId).subscribe({
+      next: (res) => {
+        this.enriching.set(false);
+        if (res.updated > 0) {
+          this.enrichResult.set(`✓ ${res.details.join('; ')}`);
+          // Reload vehicle to reflect changes
+          this.api.getVehicle(this.vehicleId).subscribe({ next: (v) => { this.vehicle = v; } });
+        } else {
+          this.enrichResult.set('Keine neuen Daten gefunden');
+        }
+      },
+      error: () => { this.enriching.set(false); this.enrichResult.set('Fehler bei der Auswertung'); },
     });
   }
 

@@ -19,6 +19,7 @@ import { Response } from 'express';
 import * as path from 'path';
 import * as fs from 'fs';
 import { InvoicesService } from './invoices.service';
+import { AiAnalysisService } from '../ai-analysis/ai-analysis.service';
 
 const uploadStorage = diskStorage({
   destination: (req, file, cb) => {
@@ -34,7 +35,10 @@ const uploadStorage = diskStorage({
 
 @Controller('invoices')
 export class InvoicesController {
-  constructor(private readonly invoicesService: InvoicesService) {}
+  constructor(
+    private readonly invoicesService: InvoicesService,
+    private readonly aiAnalysisService: AiAnalysisService,
+  ) {}
 
   @Get()
   findAll(
@@ -100,5 +104,31 @@ export class InvoicesController {
   @Delete(':id')
   delete(@Param('id') id: string) {
     return this.invoicesService.delete(id);
+  }
+
+  // ── KI-Betrugscheck für einzelne Rechnung ─────────────────────────────────
+  @Post(':id/fraud-check')
+  @HttpCode(200)
+  async fraudCheck(@Param('id') id: string) {
+    const invoice = await this.invoicesService.findOne(id);
+    if (!invoice.positions || invoice.positions.length === 0) {
+      return { anomalies: [], message: 'Keine Positionen zum Prüfen vorhanden' };
+    }
+    const positions = invoice.positions.map(p => ({
+      description: p.description,
+      quantity: Number(p.quantity) || 1,
+      unit: p.unit ?? 'Stk',
+      unitPrice: Number(p.unitPrice) || 0,
+      totalPrice: Number(p.totalPrice) || 0,
+      category: p.category,
+      isAnomaly: p.isAnomaly,
+      anomalyReason: p.anomalyReason,
+    }));
+    const anomalies = await this.aiAnalysisService.checkFraudWithAI(
+      invoice.repairContext ?? 'Unbekannte Reparatur',
+      positions,
+      null,
+    );
+    return { anomalies, checkedAt: new Date().toISOString() };
   }
 }

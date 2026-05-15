@@ -197,3 +197,63 @@ export interface MonthlyCost {
   totalAmount: number;
   invoiceCount: number;
 }
+
+// ── Betrugs- und Plausibilitätsprüfung ──────────────────────────────────────
+
+export type AlertSeverity = 'info' | 'warn' | 'danger';
+
+export interface RepeatedRepair {
+  vehicleId: string;
+  licensePlate: string;
+  description: string;
+  count: number;
+  daysBetween: number;
+  occurrences: Array<{
+    invoiceId: string;
+    invoiceDate: string;
+    workshopName: string;
+    totalAmount: number;
+  }>;
+  severity: AlertSeverity;
+  message: string;
+}
+
+export interface WorkshopAlert {
+  workshopName: string;
+  invoiceCount: number;
+  anomalyCount: number;
+  anomalyRate: number;
+  totalAmount: number;
+  severity: AlertSeverity;
+  message: string;
+}
+
+export interface PriceAnomaly {
+  invoiceId: string;
+  vehicleId: string;
+  licensePlate: string;
+  workshopName: string;
+  invoiceDate: string;
+  description: string;
+  unitPrice: number;
+  fleetAvgPrice: number;
+  deviation: number;
+  severity: 'warn' | 'danger';
+  message: string;
+}
+
+export interface FraudSummary {
+  repeatedRepairs: RepeatedRepair[];
+  workshopAlerts: WorkshopAlert[];
+  priceAnomalies: PriceAnomaly[];
+  totalAlerts: number;
+  dangerCount: number;
+  warnCount: number;
+  infoCount: number;
+}
+
+export interface InvoiceFraudCheck {
+  anomalies: Array<{ positionDescription: string; reason: string }>;
+  checkedAt: string;
+  message?: string;
+}

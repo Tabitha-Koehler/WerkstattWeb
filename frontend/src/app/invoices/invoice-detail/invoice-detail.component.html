@@ -17,6 +17,14 @@
       </p>
     </div>
     <div class="flex items-center gap-2 shrink-0">
+      <p-button
+        [label]="fraudChecking() ? 'KI prüft…' : 'KI-Betrugscheck'"
+        [icon]="fraudChecking() ? 'fa-solid fa-circle-notch fa-spin' : 'fa-solid fa-robot'"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="fraudChecking()"
+        (click)="runFraudCheck()"
+        pTooltip="KI-gestützte Plausibilitätsprüfung mit qwen2.5" />
       <p-button [label]="showPdf() ? 'PDF ausblenden' : 'PDF anzeigen'" icon="fa-solid fa-file-pdf"
         severity="secondary" [outlined]="true" (click)="showPdf.set(!showPdf())" />
       <p-button icon="fa-solid fa-trash" severity="danger" [outlined]="true"
@@ -37,6 +45,29 @@
         }
       </div>
     </div>
+  }
+
+  <!-- KI-Betrugscheck Ergebnis -->
+  @if (fraudResult() !== null) {
+    @if (fraudResult()!.length === 0) {
+      <div class="banner-success mb-4">
+        <i class="fa-solid fa-robot text-lg shrink-0"></i>
+        <div>
+          <strong>KI-Prüfung: Keine Auffälligkeiten</strong>
+          <div class="text-sm opacity-80">Alle Positionen wirken im Kontext plausibel.</div>
+        </div>
+      </div>
+    } @else {
+      <div class="banner-warning mb-4">
+        <i class="fa-solid fa-robot text-lg shrink-0"></i>
+        <div>
+          <strong>KI-Prüfung: {{ fraudResult()!.length }} Auffälligkeit(en) gefunden</strong>
+          @for (a of fraudResult()!; track $index) {
+            <div class="text-sm mt-1 opacity-80"><strong>{{ a.positionDescription }}</strong> — {{ a.reason }}</div>
+          }
+        </div>
+      </div>
+    }
   }
 
   <!-- Fehler-Banner -->

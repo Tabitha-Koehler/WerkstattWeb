@@ -44,6 +44,25 @@ export class InvoiceDetailComponent {
     LABOR: '#f3e8ff', PARTS: '#ccfbf1', TOOLS: '#fee2e2', OTHER: '#f9fafb',
   };
 
+  // KI-Betrugscheck
+  fraudChecking = signal(false);
+  fraudResult   = signal<Array<{ positionDescription: string; reason: string }> | null>(null);
+  fraudCheckedAt = signal<string | null>(null);
+
+  runFraudCheck(): void {
+    if (this.fraudChecking()) return;
+    this.fraudChecking.set(true);
+    this.fraudResult.set(null);
+    this.api.runInvoiceFraudCheck(this.invoice()!.id).subscribe({
+      next: (res) => {
+        this.fraudResult.set(res.anomalies);
+        this.fraudCheckedAt.set(res.checkedAt);
+        this.fraudChecking.set(false);
+      },
+      error: () => this.fraudChecking.set(false),
+    });
+  }
+
   deleteInvoice(): void {
     if (!confirm('Rechnung wirklich löschen?')) return;
     this.api.deleteInvoice(this.invoice()!.id).subscribe({

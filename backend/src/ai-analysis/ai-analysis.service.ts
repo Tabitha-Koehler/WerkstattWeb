@@ -57,72 +57,100 @@ export class AiAnalysisService {
 
   constructor(private readonly configService: ConfigService) {
     this.ollamaUrl = this.configService.get<string>('ollama.url') || 'http://localhost:11434';
-    this.model = this.configService.get<string>('ollama.model') || 'llama3.2';
+    this.model = this.configService.get<string>('ollama.model') || 'qwen2.5:7b';
     this.ollamaEnabled = this.configService.get<string>('OLLAMA_ENABLED') !== 'false';
   }
 
-  async analyzeInvoice(rawText: string, filename: string): Promise<AnalysisResult> {
-    if (!this.ollamaEnabled) {
-      return this.ruleBasedFallback(rawText, filename);
+  // ── Haupt-Analyse: Regelbasierte Extraktion + KI-Betrugsaudit ────────────
+  // skipAIAudit=true: nur Regelbasiert (für Massenverarbeitung), false: inkl. KI-Betrugsaudit
+  async analyzeInvoice(rawText: string, filename: string, skipAIAudit = false): Promise<AnalysisResult> {
+    // Schritt 1: Immer regelbasiert extrahieren (zuverlässig für Strukturdaten)
+    const result = this.ruleBasedFallback(rawText, filename);
+
+    // Schritt 2: KI-Betrugsaudit, falls Ollama verfügbar und Positionen vorhanden
+    if (!skipAIAudit && this.ollamaEnabled && result.positions.length > 0) {
+      const aiAnomalies = await this.checkFraudWithAI(
+        result.repairContext,
+        result.positions,
+        result.mileage,
+      );
+      if (aiAnomalies.length > 0) {
+        // Nur neue Anomalien hinzufügen (keine Duplikate)
+        const existingKeys = new Set(
+          result.anomalies.map(a => a.positionDescription.toLowerCase()),
+        );
+        const newAnomalies = aiAnomalies.filter(
+          a => !existingKeys.has(a.positionDescription.toLowerCase()),
+        );
+        result.anomalies.push(...newAnomalies);
+      }
     }
 
-    const prompt = `Du analysierst eine deutsche Werkstattrechnung für eine Spedition. Antworte NUR mit validem JSON, ohne Erklärungen, ohne Markdown, ohne Code-Fences.
+    return result;
+  }
 
-RECHNUNGSTEXT:
-${rawText.substring(0, 6000)}
+  // ── KI-Betrugsaudit (nur Plausibilitätsprüfung, kein Full-Extraction) ────
+  async checkFraudWithAI(
+    repairContext: string,
+    positions: InvoicePosition[],
+    mileage: number | null,
+  ): Promise<AnomalyResult[]> {
+    if (!this.ollamaEnabled || positions.length === 0) return [];
 
-DATEINAME: ${filename}
+    const posText = positions
+      .map(p =>
+        `• ${p.description}: ${p.quantity} ${p.unit} × ${p.unitPrice.toFixed(2)} € = ${p.totalPrice.toFixed(2)} €`,
+      )
+      .join('\n');
 
-Gib genau dieses JSON zurück:
-{
-  "licensePlate": "Kennzeichen z.B. HH-AB-1234 oder null",
-  "workshopName": "Name der Werkstatt",
-  "invoiceNumber": "Rechnungsnummer",
-  "invoiceDate": "YYYY-MM-DD oder null",
-  "serviceDate": "Annahmedatum YYYY-MM-DD oder null",
-  "totalAmount": 0.00,
-  "currency": "EUR",
-  "mileage": null,
-  "repairContext": "Kurzbeschreibung der Reparatur z.B. Bremsenwechsel Vorderachse",
-  "summary": "Zusammenfassung in 2 Sätzen",
-  "positions": [
-    {
-      "description": "Positionsbezeichnung",
-      "quantity": 1.0,
-      "unit": "Stk",
-      "unitPrice": 0.00,
-      "totalPrice": 0.00,
-      "category": "REPAIR",
-      "isAnomaly": false,
-      "anomalyReason": null
-    }
-  ],
-  "inspections": [],
-  "operatingSupplies": [],
-  "anomalies": []
-}
+    const prompt = `Du bist Experte für LKW-Werkstattrechnungen und erkennst Abrechnungsbetrug.
 
-Kategorien: REPAIR, INSPECTION, BETRIEBSMITTEL, LABOR, PARTS, TOOLS, OTHER
-Anomalien markieren wenn:
-- Werkzeuge (Spezialwerkzeug, Schraubenschlüssel, Zange etc.) auf einer Reparaturrechnung stehen
-- Mehr als 2 Kanister Öl/Betriebsmittel die nicht zum Reparaturkontext passen (z.B. Motoröl beim Reifenwechsel)
-- Ungewöhnlich hohe Mengen: Motoröl >15L, Getriebeöl >10L, AdBlue >100L, Kühlmittel >20L
-- Positionen die offensichtlich nicht zum Reparaturkontext passen (z.B. Reinigungsmittel, Regale, Bürobedarf)
-- Kühlmittel/Frostschutz bei einem reinen Reifenwechsel
-- Menge einer Position ist für den Fahrzeugtyp LKW unplausibel hoch
-SP=Sicherheitsprüfung, HU=Hauptuntersuchung, AU=Abgasuntersuchung als inspections eintragen.
-mileage: km-Stand aus Rechnung als Zahl oder null.`;
+Reparaturkontext: "${repairContext}"
+${mileage ? `Kilometerstand: ${mileage.toLocaleString('de-DE')} km` : ''}
+
+Positionen:
+${posText}
+
+Antworte NUR mit validem JSON, keine Erklärungen außerhalb:
+{"anomalies":[{"position":"Positionsbezeichnung","reason":"Kurze Begründung auf Deutsch"}]}
+
+Wenn nichts verdächtig ist: {"anomalies":[]}
+
+Prüfe gezielt:
+1. Passen ALLE Positionen zum Reparaturkontext? (z.B. Klimareiniger bei Bremsenwechsel = verdächtig)
+2. Sind Mengen für LKW plausibel? (z.B. 5 Kanister Motoröl bei Reifenwechsel = verdächtig)
+3. Spezialwerkzeug/Diagnosegerät auffällig auf normaler Reparaturrechnung?
+4. Preise pro Einheit auffällig hoch (>250€/Std Lohnkosten, >5× Normalpreis für Teile)?
+5. Doppelte oder nahezu identische Positionen?`;
 
     try {
       const responseText = await this.callOllama(prompt);
-      const result: AnalysisResult = this.parseJson(responseText);
+      const parsed = this.parseAnomalyJson(responseText);
       this.logger.log(
-        `Ollama-Analyse abgeschlossen für ${filename}: ${result.anomalies?.length || 0} Anomalien`,
+        `KI-Betrugsaudit: ${parsed.length} zusätzliche Anomalien erkannt`,
       );
-      return result;
-    } catch (error) {
-      this.logger.error(`Ollama-Fehler bei ${filename}: ${error.message}`);
-      return this.ruleBasedFallback(rawText, filename);
+      return parsed.map(a => ({
+        positionDescription: a.position || '',
+        reason: `🤖 KI-Prüfung: ${a.reason || ''}`,
+      }));
+    } catch (err) {
+      this.logger.warn(`KI-Betrugsaudit fehlgeschlagen: ${err.message}`);
+      return [];
+    }
+  }
+
+  private parseAnomalyJson(text: string): Array<{ position: string; reason: string }> {
+    try {
+      let clean = text.trim();
+      const fence = clean.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (fence) clean = fence[1].trim();
+      const start = clean.indexOf('{');
+      const end = clean.lastIndexOf('}');
+      if (start !== -1 && end !== -1) clean = clean.substring(start, end + 1);
+      const parsed = JSON.parse(clean);
+      return Array.isArray(parsed.anomalies) ? parsed.anomalies : [];
+    } catch {
+      return [];
     }
   }
 
@@ -501,7 +529,7 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
         if (/^(?:Summe|Gesamt|Brutto|Netto|MwSt|USt|Endbetrag)/i.test(desc)) continue;
         // Kein €-Zeichen oder Mail-Marker in der Beschreibung
         if (desc.includes('€') || desc.includes('$anA') || desc.includes('$anE')) continue;
-        positions.push({ description: desc, quantity: qty, unit: unit || 'Stk', unitPrice: ep, totalPrice: gp, category: 'OTHER', isAnomaly: false, anomalyReason: null });
+        positions.push({ description: desc, quantity: qty, unit: unit || 'Stk', unitPrice: ep, totalPrice: gp, category: this.categorizePosition(desc), isAnomaly: false, anomalyReason: null });
         if (positions.length >= 20) break;
       }
     }
@@ -516,7 +544,7 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
         const gp = parseDE(m[6]);
         if (gp > 0 && gp <= (totalAmount || 99999) * 1.5 && desc.length > 2 &&
             !/^(?:Summe|Gesamt|Brutto|Netto|MwSt|USt|Endbetrag)/i.test(desc)) {
-          positions.push({ description: desc, quantity: qty, unit: m[3], unitPrice: ep, totalPrice: gp, category: 'OTHER', isAnomaly: false, anomalyReason: null });
+          positions.push({ description: desc, quantity: qty, unit: m[3], unitPrice: ep, totalPrice: gp, category: this.categorizePosition(desc), isAnomaly: false, anomalyReason: null });
           if (positions.length >= 20) break;
         }
       }
@@ -530,7 +558,7 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
         const price = parseDE(m[2]);
         if (price > 0 && price <= (totalAmount || 99999) * 1.1 &&
             !/^(?:Summe|Gesamt|Brutto|Netto|MwSt|USt|Endbetrag|Rechnungs|Übertr)/i.test(desc)) {
-          positions.push({ description: desc, quantity: 1, unit: 'Stk', unitPrice: price, totalPrice: price, category: 'OTHER', isAnomaly: false, anomalyReason: null });
+          positions.push({ description: desc, quantity: 1, unit: 'Stk', unitPrice: price, totalPrice: price, category: this.categorizePosition(desc), isAnomaly: false, anomalyReason: null });
           if (positions.length >= 20) break;
         }
       }
@@ -625,5 +653,24 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
       operatingSupplies: supplies,
       anomalies,
     };
+  }
+
+  /** Klassifiziert eine Rechnungsposition anhand ihrer Beschreibung.
+   *  Gibt LABOR | INSPECTION | BETRIEBSMITTEL | PARTS | REPAIR zurück.
+   *  Wird auch von InvoicesService für ZUGFeRD-Positionen genutzt. */
+  categorizePosition(desc: string): string {
+    const d = desc.toLowerCase();
+    // Lohnkosten / Arbeitszeit
+    if (/\b(?:lohn|arbeit(?:slohn|szeit|skosten)?|montage(?:lohn)?|stunden?|std\b|werkstatt(?:lohn)?|demontage|ein-?\s*und\s*aus(?:bau)?)\b/i.test(d)) return 'LABOR';
+    // HU/AU/SP-Prüfungen
+    if (/\b(?:sp\s*§|sicherheitspr[üu]fung|hauptuntersuchung|abgasuntersuchung|\bhu\b|\bau\b|sp\s*prüfung|uvv)\b/i.test(d)) return 'INSPECTION';
+    // Betriebsmittel / Flüssigkeiten
+    if (/\b(?:motor(?:en)?öl|getriebeöl|hydrauliköl|diff(?:erenzial)?öl|achsöl|bremsflüssigkeit|kühlmittel|kühl(?:er)?frostschutz|frostschutz|adblue|schmier(?:fett|stoff|mittel)|betriebsmittel|kraftstoff|diesel|benzin)\b/i.test(d)) return 'BETRIEBSMITTEL';
+    // Teile / Ersatzteile
+    if (/\b(?:bremsbelag|bremsscheibe|bremstrommel|bremsbacke|filter|dichtring|dichtung(?:en)?|o-?ring|schlauch|lager|riemen|kette|zahn(?:riemen|rad)|kupplung(?:sscheibe|belag)?|glühkerze|zündkerze|anlasser|lichtmaschine|turbo(?:lader)?|pumpe|ventil|nockenwelle|kolben(?:ring)?|pleuel|kurbelwelle|felge|reifen|luftfeder|stoßdämpfer|stossdämpfer|achse|achsschenkel|spurstange|querlenker|sensor|steuergerät|relais|sicherung|kabel|batterie|scheinwerfer|bremssattel|bremszylinder|radlager|antriebswelle|gelenkwelle|kardanwelle|differenzial|verteilergetriebe|kühler|wasserpumpe|thermostat|keilriemen|spannrolle|umlenkrolle|ersatzteil|austausch(?:teil)?)\b/i.test(d)) return 'PARTS';
+    // Reparatur / Instandhaltung (Tätigkeitsworte)
+    if (/\b(?:reparatur|instandsetz(?:ung)?|austausch|wechsel|erneuer(?:ung)?|überholung|wartung|inspektion|prüfung|einstell(?:ung)?|justier(?:ung)?|nachrüst(?:ung)?|umbau|umrüstung|schweißen|richt(?:arbeit)?|lackier(?:ung)?|reinigung(?:sarbeit)?|diagnose|fehlersuche|vermessung)\b/i.test(d)) return 'REPAIR';
+    // Standard: Teile (die meisten Positionen sind Ersatzteile)
+    return 'PARTS';
   }
 }

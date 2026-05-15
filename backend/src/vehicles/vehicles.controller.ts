@@ -33,6 +33,16 @@ export class VehiclesController {
     return this.vehiclesService.getTimeline(id);
   }
 
+  @Post('enrich-from-invoices')
+  enrichAllFromInvoices() {
+    return this.vehiclesService.enrichFromInvoices();
+  }
+
+  @Post(':id/enrich-from-invoices')
+  enrichFromInvoices(@Param('id') id: string) {
+    return this.vehiclesService.enrichFromInvoices(id);
+  }
+
   @Post()
   create(@Body() body: Partial<Vehicle>) { return this.vehiclesService.create(body); }
 

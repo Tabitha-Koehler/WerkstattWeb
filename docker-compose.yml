@@ -29,9 +29,9 @@ services:
       DB_USERNAME: werkstatt
       DB_PASSWORD: werkstatt2024
       DB_NAME: werkstattweb
-      OLLAMA_URL: http://host-gateway:11434
-      OLLAMA_MODEL: llama3.2
-      OLLAMA_ENABLED: "false"
+      OLLAMA_URL: http://host.docker.internal:11434
+      OLLAMA_MODEL: qwen2.5:7b
+      OLLAMA_ENABLED: "true"
       WATCH_FOLDER: /data/rechnungen_pdf
       PORT: "3000"
     ports:

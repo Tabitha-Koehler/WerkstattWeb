@@ -153,7 +153,7 @@ export class InvoicesService {
             unit: li.unit,
             unitPrice: li.unitPrice,
             totalPrice: li.totalPrice,
-            category: PositionCategory.OTHER,
+            category: (this.aiAnalysis.categorizePosition(li.description) as PositionCategory),
             isAnomaly: false,
             anomalyReason: null,
           }))
@@ -482,7 +482,8 @@ export class InvoicesService {
           const ocrText = await this.pdfParser.ocrPdf(pdfBuffer);
           if (ocrText.trim().length > 50) effectiveText = ocrText;
         }
-        const analysis = await this.aiAnalysis.analyzeInvoice(effectiveText, inv.originalFilename ?? '');
+        // Reprocess: skipAIAudit=true für Massenverarbeitung (KI-Betrugscheck on-demand via Button)
+        const analysis = await this.aiAnalysis.analyzeInvoice(effectiveText, inv.originalFilename ?? '', true);
 
         // Inspektionen aktualisieren (überschreibt alte/falsche nextDueDate-Werte)
         if ((analysis.inspections ?? []).length && inv.vehicleId) {
@@ -522,8 +523,15 @@ export class InvoicesService {
 
         // Bestehende Garbage-Positionen immer bereinigen (€-Zeichen in Beschreibung = Extraktionsfehler)
         const existingPositions = await this.positionRepo.find({ where: { invoiceId: inv.id } });
+        const isGarbage = (desc: string | undefined) => {
+          if (!desc) return false;
+          if (desc.includes('€') || desc.includes('$an')) return true;
+          // Tabellenheader-Zeilen (z.B. "PosMengeEinh.NummerBezeichnungEPGPM")
+          if (desc.length > 15 && !desc.includes(' ') && /(?:Einh|Bezeichnung|Menge|Pos\b)/i.test(desc)) return true;
+          return false;
+        };
         const garbageIds = existingPositions
-          .filter(p => p.description?.includes('€') || p.description?.includes('$an'))
+          .filter(p => isGarbage(p.description))
           .map(p => p.id);
         if (garbageIds.length > 0) {
           await this.positionRepo.delete(garbageIds);
@@ -576,13 +584,19 @@ export class InvoicesService {
               p.description?.toLowerCase() === key ||
               key.includes(p.description?.toLowerCase()?.substring(0, 8) ?? '___')
             );
+            // Re-kategorisieren wenn noch 'OTHER' (aus alten Läufen ohne Kategorisierung)
+            const newCategory = pos.category === PositionCategory.OTHER
+              ? (this.aiAnalysis.categorizePosition(pos.description ?? '') as PositionCategory)
+              : pos.category;
             const changed =
               pos.isAnomaly !== !!anomalyReason ||
               pos.anomalyReason !== (anomalyReason ?? null) ||
+              pos.category !== newCategory ||
               (aiPos && pos.category !== aiPos.category as any);
             if (changed) {
               pos.isAnomaly = !!anomalyReason;
               pos.anomalyReason = anomalyReason;
+              pos.category = newCategory;
               if (aiPos && aiPos.category) pos.category = aiPos.category as any;
               await this.positionRepo.save(pos);
             }

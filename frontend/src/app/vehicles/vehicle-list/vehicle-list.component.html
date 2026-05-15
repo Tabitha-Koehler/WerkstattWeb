@@ -6,7 +6,22 @@
       <h1 class="page-title">Fahrzeuge</h1>
       <p class="page-subtitle">Fuhrpark der Spedition</p>
     </div>
-    <p-button label="Fahrzeug hinzufügen" icon="fa-solid fa-plus" (click)="openDialog()" />
+    <div class="flex flex-col items-end gap-1">
+      <div class="flex gap-2">
+        <p-button
+          [label]="enriching() ? 'Analysiere…' : 'Daten aus Rechnungen befüllen'"
+          [icon]="enriching() ? 'fa-solid fa-circle-notch fa-spin' : 'fa-solid fa-wand-magic-sparkles'"
+          severity="secondary"
+          [outlined]="true"
+          [disabled]="enriching()"
+          (click)="enrichAllFromInvoices()"
+          pTooltip="FIN, Marke, Modell und Baujahr aus vorhandenen Rechnungen automatisch ermitteln" />
+        <p-button label="Fahrzeug hinzufügen" icon="fa-solid fa-plus" (click)="openDialog()" />
+      </div>
+      @if (enrichResult()) {
+        <span class="text-xs" style="color:var(--text-color-secondary)">{{ enrichResult() }}</span>
+      }
+    </div>
   </div>
 
   <!-- Error -->

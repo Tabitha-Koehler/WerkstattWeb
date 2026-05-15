@@ -5,6 +5,189 @@
     <p class="page-subtitle">Werkstattvergleich, Fahrzeugkosten und Kostentrend</p>
   </div>
 
+  <!-- ══ BETRUGSPRÜFUNG ══════════════════════════════════════════════════════ -->
+  <div class="card p-0">
+    <!-- Header -->
+    <div class="card-header">
+      <div class="flex items-center gap-3">
+        <span class="w-9 h-9 rounded-xl bg-red-500/10 text-red-600 dark:text-red-400 flex items-center justify-center text-sm shrink-0">
+          <i class="fa-solid fa-shield-halved"></i>
+        </span>
+        <div>
+          <h2 class="section-title mb-0">Plausibilitäts- &amp; Betrugsprüfung</h2>
+          <p class="text-xs mt-0.5" style="color:var(--surface-muted)">KI-gestützte Analyse · Regelbasiert · Flottenweite Muster</p>
+        </div>
+      </div>
+      @if (fraudSummary && fraudSummary.totalAlerts > 0) {
+        <div class="flex items-center gap-2">
+          @if (fraudSummary.dangerCount > 0) {
+            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-red-500/10 text-red-600 dark:text-red-400">
+              {{ fraudSummary.dangerCount }} Kritisch
+            </span>
+          }
+          @if (fraudSummary.warnCount > 0) {
+            <span class="text-xs font-semibold px-2 py-1 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              {{ fraudSummary.warnCount }} Warnung
+            </span>
+          }
+        </div>
+      }
+    </div>
+
+    @if (fraudLoading()) {
+      <div class="flex justify-center py-10"><div class="spinner"></div></div>
+    } @else if (!fraudSummary || fraudSummary.totalAlerts === 0) {
+      <div class="empty-state py-10">
+        <i class="fa-solid fa-shield-check text-5xl text-emerald-500"></i>
+        <p class="font-medium text-emerald-600 dark:text-emerald-400">Keine Auffälligkeiten gefunden</p>
+        <p class="text-sm" style="color:var(--surface-muted)">Alle Rechnungen wirken plausibel.</p>
+      </div>
+    } @else {
+      <!-- Tab-Leiste -->
+      <div class="flex gap-1 px-4 pt-3" style="border-bottom:1px solid var(--surface-border)">
+        @for (tab of [
+          {id:'repeated', label:'Wiederholreparaturen', count: fraudSummary.repeatedRepairs.length, icon:'fa-rotate'},
+          {id:'workshop', label:'Werkstatt-Muster', count: fraudSummary.workshopAlerts.length, icon:'fa-building'},
+          {id:'price', label:'Preisanomalien', count: fraudSummary.priceAnomalies.length, icon:'fa-tag'}
+        ]; track tab.id) {
+          <button
+            class="px-4 py-2 text-sm font-medium rounded-t-lg transition-all flex items-center gap-2 -mb-px"
+            [style]="activeAlertTab() === tab.id
+              ? 'border:1px solid var(--surface-border); border-bottom-color:var(--surface-card); background:var(--surface-card); color:var(--surface-text)'
+              : 'color:var(--surface-muted)'"
+            (click)="activeAlertTab.set($any(tab.id))">
+            <i class="fa-solid {{ tab.icon }} text-xs"></i>
+            {{ tab.label }}
+            @if (tab.count > 0) {
+              <span class="text-xs px-1.5 py-0.5 rounded-full font-bold"
+                    style="background:var(--p-primary-color); color:#fff">{{ tab.count }}</span>
+            }
+          </button>
+        }
+      </div>
+
+      <!-- Wiederholreparaturen -->
+      @if (activeAlertTab() === 'repeated') {
+        <div class="divide-y" style="--tw-divide-opacity:1">
+          @if (fraudSummary.repeatedRepairs.length === 0) {
+            <div class="empty-state py-8">
+              <i class="fa-solid fa-check-circle text-3xl text-emerald-500"></i>
+              <p class="text-sm">Keine Wiederholreparaturen in den letzten 90 Tagen</p>
+            </div>
+          }
+          @for (rep of fraudSummary.repeatedRepairs; track $index) {
+            <div class="px-4 py-3 flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                   [class]="severityBg(rep.severity)">
+                <i class="fa-solid {{ severityIcon(rep.severity) }} text-sm" [class]="severityColor(rep.severity)"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-semibold text-sm">{{ rep.licensePlate }}</span>
+                  <span class="text-xs px-2 py-0.5 rounded-full"
+                        style="background:var(--surface-hover); color:var(--surface-muted)">
+                    {{ rep.count }}× in {{ rep.daysBetween }} Tagen
+                  </span>
+                </div>
+                <p class="text-sm mt-0.5" style="color:var(--surface-text)">{{ rep.description }}</p>
+                <div class="flex flex-wrap gap-2 mt-1.5">
+                  @for (occ of rep.occurrences; track $index) {
+                    <button
+                      class="text-xs px-2 py-0.5 rounded-md hover:opacity-80 transition-opacity"
+                      style="background:var(--surface-hover); color:var(--surface-muted)"
+                      (click)="goToInvoice(occ.invoiceId)">
+                      {{ occ.invoiceDate | date:'dd.MM.yy' }} · {{ occ.workshopName | slice:0:20 }}
+                    </button>
+                  }
+                </div>
+              </div>
+              <button class="btn-icon text-blue-500 shrink-0" (click)="goToVehicle(rep.vehicleId)"
+                      title="Fahrzeug öffnen">
+                <i class="fa-solid fa-truck"></i>
+              </button>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Werkstatt-Muster -->
+      @if (activeAlertTab() === 'workshop') {
+        <div class="divide-y">
+          @if (fraudSummary.workshopAlerts.length === 0) {
+            <div class="empty-state py-8">
+              <i class="fa-solid fa-check-circle text-3xl text-emerald-500"></i>
+              <p class="text-sm">Keine auffälligen Werkstätten gefunden</p>
+            </div>
+          }
+          @for (ws of fraudSummary.workshopAlerts; track $index) {
+            <div class="px-4 py-3 flex items-start gap-3">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                   [class]="severityBg(ws.severity)">
+                <i class="fa-solid {{ severityIcon(ws.severity) }} text-sm" [class]="severityColor(ws.severity)"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="font-semibold text-sm">{{ ws.workshopName }}</p>
+                <p class="text-sm mt-0.5" [class]="severityColor(ws.severity)">{{ ws.message }}</p>
+                <p class="text-xs mt-1" style="color:var(--surface-muted)">
+                  Gesamtumsatz: {{ ws.totalAmount | currency:'EUR':'symbol':'1.0-0':'de' }}
+                </p>
+              </div>
+              <!-- Anomalierate-Balken -->
+              <div class="w-20 shrink-0">
+                <div class="text-right text-xs font-bold mb-1" [class]="severityColor(ws.severity)">
+                  {{ ws.anomalyRate }}%
+                </div>
+                <div class="h-2 rounded-full overflow-hidden" style="background:var(--surface-hover)">
+                  <div class="h-full rounded-full transition-all"
+                       [style.width]="ws.anomalyRate + '%'"
+                       [class]="ws.severity === 'danger' ? 'bg-red-500' : 'bg-amber-500'"></div>
+                </div>
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Preisanomalien -->
+      @if (activeAlertTab() === 'price') {
+        <div class="divide-y">
+          @if (fraudSummary.priceAnomalies.length === 0) {
+            <div class="empty-state py-8">
+              <i class="fa-solid fa-check-circle text-3xl text-emerald-500"></i>
+              <p class="text-sm">Keine Preisanomalien gefunden</p>
+            </div>
+          }
+          @for (pa of fraudSummary.priceAnomalies; track $index) {
+            <div class="px-4 py-3 flex items-start gap-3 cursor-pointer hover:bg-[var(--surface-hover)]"
+                 (click)="goToInvoice(pa.invoiceId)">
+              <div class="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                   [class]="severityBg(pa.severity)">
+                <i class="fa-solid {{ severityIcon(pa.severity) }} text-sm" [class]="severityColor(pa.severity)"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="font-semibold text-sm">{{ pa.licensePlate }}</span>
+                  <span class="text-xs" style="color:var(--surface-muted)">{{ pa.invoiceDate | date:'dd.MM.yyyy' }}</span>
+                  <span class="text-xs px-1.5 py-0.5 rounded-full font-bold"
+                        [class]="pa.severity === 'danger' ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'">
+                    +{{ pa.deviation }}%
+                  </span>
+                </div>
+                <p class="text-sm mt-0.5" style="color:var(--surface-text)">{{ pa.description }}</p>
+                <p class="text-xs mt-1" style="color:var(--surface-muted)">
+                  {{ pa.unitPrice | currency:'EUR':'symbol':'1.2-2':'de' }} vs. Flottenø {{ pa.fleetAvgPrice | currency:'EUR':'symbol':'1.2-2':'de' }}
+                  · {{ pa.workshopName | slice:0:30 }}
+                </p>
+              </div>
+              <i class="fa-solid fa-chevron-right text-xs shrink-0 mt-2" style="color:var(--surface-muted)"></i>
+            </div>
+          }
+        </div>
+      }
+    }
+  </div>
+  <!-- ══ END BETRUGSPRÜFUNG ══════════════════════════════════════════════════ -->
+
   @if (loading) {
     <div class="flex justify-center py-20"><div class="spinner"></div></div>
   }
