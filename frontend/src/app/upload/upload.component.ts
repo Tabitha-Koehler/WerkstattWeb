@@ -35,7 +35,7 @@ export class UploadComponent {
   errorCount   = computed(() => this.queue().filter(i => i.status === 'error').length);
 
   openPicker(input: HTMLInputElement): void {
-    this.zone.runOutsideAngular(() => setTimeout(() => input.click(), 0));
+    this.zone.runOutsideAngular(() => input.click());
   }
 
   onDragOver(e: DragEvent): void { e.preventDefault(); this.dragOver.set(true); }
