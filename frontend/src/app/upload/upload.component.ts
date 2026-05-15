@@ -1,4 +1,4 @@
-import { Component, inject, signal, computed } from '@angular/core';
+import { Component, inject, signal, computed, NgZone } from '@angular/core';
 import { Router } from '@angular/router';
 import { CurrencyPipe } from '@angular/common';
 import { ButtonModule } from 'primeng/button';
@@ -24,6 +24,7 @@ interface UploadItem {
 export class UploadComponent {
   private api    = inject(ApiService);
   private router = inject(Router);
+  private zone   = inject(NgZone);
 
   queue     = signal<UploadItem[]>([]);
   dragOver  = signal(false);
@@ -32,6 +33,10 @@ export class UploadComponent {
   pendingCount = computed(() => this.queue().filter(i => i.status === 'pending').length);
   doneCount    = computed(() => this.queue().filter(i => i.status === 'done').length);
   errorCount   = computed(() => this.queue().filter(i => i.status === 'error').length);
+
+  openPicker(input: HTMLInputElement): void {
+    this.zone.runOutsideAngular(() => setTimeout(() => input.click(), 0));
+  }
 
   onDragOver(e: DragEvent): void { e.preventDefault(); this.dragOver.set(true); }
   onDragLeave(): void { this.dragOver.set(false); }
