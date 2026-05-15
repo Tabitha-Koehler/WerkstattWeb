@@ -402,49 +402,100 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
         const gpNumMatch = gpRaw.match(/(\d{1,3}(?:\.\d{3})*,\d{2})$/);
         const gp = parseDE(gpNumMatch?.[1] || gpRaw);
         if (!gp || gp <= 0 || isNaN(gp)) continue;
+        // Hilfsfunktion: Versuche die richtige EP/Menge-Aufteilung zu finden
+        // Hollenberg concateniert: [desc][qty][EP] — Suche die Kombination wo qty × EP ≈ GP
+        const findBestSplit = (candidate: string): { desc: string; qty: number; ep: number } | null => {
+          // Teste EP-Längen 1-3 Vorkomma-Stellen (z.B. "3,50", "73,50", "173,50")
+          for (let epPreDigits = 1; epPreDigits <= 3; epPreDigits++) {
+            const epR = new RegExp(`(\\d{${epPreDigits}},\\d{2})$`);
+            const epM = candidate.match(epR);
+            if (!epM) continue;
+            const epVal = parseDE(epM[1]);
+            if (epVal <= 0) continue;
+            const remaining = candidate.slice(0, candidate.length - epM[0].length);
+
+            // Strategie A: Menge aus Ende von remaining extrahieren (normale Fälle)
+            const qtyM = remaining.match(/(\d+(?:,\d+)?)\s*$/);
+            if (qtyM) {
+              const qtyVal = parseFloat(qtyM[1].replace(',', '.'));
+              if (!isNaN(qtyVal) && qtyVal > 0 && qtyVal <= 999 &&
+                  Math.abs(qtyVal * epVal - gp) / (gp || 1) <= 0.02) {
+                const d = remaining.slice(0, remaining.length - qtyM[0].length).trim();
+                if (d.length >= 2) return { desc: d, qty: qtyVal, ep: epVal };
+              }
+            }
+
+            // Strategie B: Menge aus GP/EP berechnen und direkt im Text suchen
+            // (nötig wenn Menge mit Beschreibungsziffer verschmilzt, z.B. "W 4017" → "W 40" + "17")
+            const expectedQty = gp / epVal;
+            if (expectedQty > 0 && expectedQty <= 999 &&
+                Math.abs(Math.round(expectedQty) - expectedQty) < 0.01) {
+              const qtyStr = String(Math.round(expectedQty));
+              if (remaining.endsWith(qtyStr) && remaining.length > qtyStr.length) {
+                const d = remaining.slice(0, remaining.length - qtyStr.length).trim();
+                if (d.length >= 2) return { desc: d, qty: Math.round(expectedQty), ep: epVal };
+              }
+            }
+          }
+          return null;
+        };
+
         let ep = gp;
+        let qty = 1;
+        let desc = '';
         let descQtyPart = '';
+
         if (priceParts.length >= 3) {
           const thirdLast = priceParts[priceParts.length - 3];
-          const epMatch = thirdLast.match(/(\d{1,3}(?:\.\d{3})*,\d{2})$/);
-          if (epMatch) {
-            ep = parseDE(epMatch[1]);
-            descQtyPart = thirdLast.slice(0, thirdLast.length - epMatch[0].length);
+          // Erst beste GP-validierte Aufteilung suchen
+          const best = findBestSplit(thirdLast);
+          if (best) {
+            // findBestSplit hat qty×EP=GP validiert → direkt übernehmen, kein weiterer Revert
+            ep = best.ep;
+            qty = best.qty;
+            desc = best.desc;
+            descQtyPart = thirdLast; // für Cleanup-Schritt unten
           } else {
-            descQtyPart = priceParts.slice(0, priceParts.length - 2).join(' €');
+            // Fallback: EP gierig extrahieren, Menge danach
+            const epMatch = thirdLast.match(/(\d{1,3}(?:\.\d{3})*,\d{2})$/);
+            if (epMatch) {
+              ep = parseDE(epMatch[1]);
+              descQtyPart = thirdLast.slice(0, thirdLast.length - epMatch[0].length);
+            } else {
+              descQtyPart = priceParts.slice(0, priceParts.length - 2).join(' €');
+            }
+            desc = descQtyPart.trim();
+            const qtyMatch = descQtyPart.match(/(\d+(?:,\d+)?)\s*$/);
+            if (qtyMatch) {
+              const parsedQty = parseFloat(qtyMatch[1].replace(',', '.'));
+              if (!isNaN(parsedQty) && parsedQty > 0 && parsedQty < 10000) {
+                qty = parsedQty;
+                desc = descQtyPart.slice(0, descQtyPart.length - qtyMatch[0].length).trim();
+              }
+            }
+            // Falsch-Extraktion nur im Fallback rückgängig machen:
+            // 1. Reifengröße (z.B. "315/70R22,5") — Felgengröße ist Teil der Beschreibung
+            // 2. Ölviskosität (z.B. "10 W" oder "5W") — Viskositätszahl gehört dazu
+            // 3. §-Paragraphen (z.B. "SP §29") — Paragraphennummer bleibt in der Beschreibung
+            if (
+              /\d+\/\d+[A-Z]/i.test(descQtyPart) ||
+              /\d+\s*W$/i.test(desc) ||
+              descQtyPart.includes('§')
+            ) {
+              qty = 1;
+              ep = gp;
+              desc = descQtyPart.trim();
+            }
           }
         } else {
-          // Nur 2 Teile: erster Teil ist desc+qty+EP zusammen (kein extra EP)
+          // Nur 2 Teile: erster Teil ist desc+qty+EP (kein extra EP erkennbar)
           descQtyPart = priceParts[0];
-        }
-        // Menge am Ende von descQtyPart extrahieren
-        const qtyMatch = descQtyPart.match(/(\d+(?:,\d+)?)\s*$/);
-        let qty = 1;
-        let desc = descQtyPart.trim();
-        if (qtyMatch) {
-          const parsedQty = parseFloat(qtyMatch[1].replace(',', '.'));
-          if (!isNaN(parsedQty) && parsedQty > 0 && parsedQty < 10000) {
-            qty = parsedQty;
-            desc = descQtyPart.slice(0, descQtyPart.length - qtyMatch[0].length).trim();
-          }
-        }
-        // Falsch-Extraktion rückgängig machen für bekannte Muster:
-        // 1. Reifengröße (z.B. "315/70R22,5") — Felgengröße ist Teil der Beschreibung
-        // 2. Ölviskosität (z.B. "5W30") — Viskositätszahl ist Teil der Beschreibung
-        // 3. §-Paragraphen (z.B. "SP §29") — Paragraphennummer ist Teil der Beschreibung
-        if (
-          /\d+\/\d+[A-Z]/i.test(descQtyPart) ||
-          /\d+W$/i.test(desc) ||
-          descQtyPart.includes('§')
-        ) {
-          qty = 1;
           desc = descQtyPart.trim();
         }
         // Abschließende Artefakte entfernen:
         // 1. Hängendes Komma (z.B. "Schmierfett1,")
         desc = desc.replace(/[,]\s*$/, '').trim();
-        // 2. Einzelne Ziffer direkt nach einem Buchstaben am Ende (z.B. "Schmierfett1" → "Schmierfett")
-        //    Nur einzelne Ziffer — mehrstell. Zahlen wie "5W30" oder "§291" werden nicht berührt
+        // 2. Einzelne Ziffer direkt nach einem Buchstaben (z.B. "Schmierfett1" → "Schmierfett")
         desc = desc.replace(/([A-Za-zÄÖÜäöüß])\d$/, '$1').trim();
         if (desc.length < 2) continue;
         if (/^(?:Summe|Gesamt|Brutto|Netto|MwSt|USt|Endbetrag)/i.test(desc)) continue;
