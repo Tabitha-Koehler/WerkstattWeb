@@ -4,15 +4,55 @@
   <aside class="w-60 flex flex-col shrink-0 border-r transition-colors duration-200"
          style="background:var(--surface-sidebar); border-color:var(--surface-sidebar-border)">
 
-    <!-- Logo -->
-    <div class="flex items-center gap-3 px-5 py-5 border-b" style="border-color:var(--surface-sidebar-border)">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-md shrink-0">
-        <i class="fa-solid fa-truck text-white text-sm"></i>
+    <!-- Portal Switcher -->
+    <div style="position:relative">
+      <div class="flex items-center justify-between border-b" style="border-color:var(--surface-sidebar-border); padding:0.75rem 1rem;">
+        <button (click)="portalOpen = !portalOpen"
+                class="flex items-center gap-2 flex-1 min-w-0"
+                style="background:none;border:none;cursor:pointer;padding:0;">
+          <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center overflow-hidden shrink-0">
+            <img src="assets/ck-logo.png" alt="CK" style="width:32px;height:32px;object-fit:contain;">
+          </div>
+          <div class="flex-1 min-w-0 text-left">
+            <p class="text-sm font-bold leading-tight" style="color:var(--surface-text)">Cargo Köhler</p>
+            <p class="text-xs font-medium text-green-400 flex items-center gap-1">
+              Werkstatt
+              <i class="fa-solid fa-chevron-down text-xs transition-transform"
+                 [style.transform]="portalOpen ? 'rotate(180deg)' : 'rotate(0deg)'"></i>
+            </p>
+          </div>
+        </button>
       </div>
-      <div class="min-w-0">
-        <div class="font-bold text-sm leading-tight" style="color:var(--surface-text)">WerkstattWeb</div>
-        <div class="text-xs" style="color:var(--surface-muted)">Spedition</div>
-      </div>
+
+      <!-- Dropdown -->
+      @if (portalOpen) {
+        <div style="position:fixed;inset:0;z-index:99;" (click)="portalOpen=false"></div>
+        <div style="position:absolute;top:100%;left:0.5rem;right:0.5rem;z-index:100;margin-top:0.25rem;">
+          <div class="rounded-xl shadow-xl overflow-hidden p-1.5"
+               style="background:#1f2937;border:1px solid #374151;">
+            <p class="px-2 py-1 text-xs font-medium uppercase tracking-wider" style="color:#6b7280;">Portal wechseln</p>
+            @for (p of portals; track p.id) {
+              @if (p.href) {
+                <a [href]="p.href"
+                   class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium no-underline"
+                   style="color:#d1d5db;"
+                   onmouseover="this.style.background='#374151';this.style.color='white'"
+                   onmouseout="this.style.background='transparent';this.style.color='#d1d5db'">
+                  <i class="fa-solid {{ p.icon }} w-4 text-center"></i>
+                  <span>{{ p.label }}</span>
+                </a>
+              } @else {
+                <div class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-white"
+                     style="background:#16a34a;">
+                  <i class="fa-solid {{ p.icon }} w-4 text-center"></i>
+                  <span class="flex-1">{{ p.label }}</span>
+                  <i class="fa-solid fa-check"></i>
+                </div>
+              }
+            }
+          </div>
+        </div>
+      }
     </div>
 
     <!-- Navigation -->

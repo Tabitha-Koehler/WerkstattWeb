@@ -14,6 +14,13 @@ import { ThemeService } from './core/services/theme.service';
 })
 export class AppComponent {
   readonly theme = inject(ThemeService);
+  portalOpen = false;
+
+  readonly portals = [
+    { id: 'dispo',     label: 'Disposition', icon: 'fa-map-pin', color: 'blue',  href: 'https://cargokoehler-dispo.vercel.app' },
+    { id: 'fuhrpark',  label: 'Fuhrpark',    icon: 'fa-truck',   color: 'red',   href: 'https://cargokoehler-dispo.vercel.app/fuhrpark' },
+    { id: 'werkstatt', label: 'Werkstatt',   icon: 'fa-wrench',  color: 'green', href: null },
+  ];
 
   readonly navItems = [
     { path: '/dashboard', icon: 'fa-gauge-high',     label: 'Dashboard'   },
