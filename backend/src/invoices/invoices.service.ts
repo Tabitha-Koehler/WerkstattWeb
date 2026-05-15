@@ -228,17 +228,30 @@ export class InvoicesService {
           inspectionSources = [...inspectionSources, { type: 'HU' as const, date: invoice.invoiceDate, nextDueDate: zugferd.nextHuDate }];
         }
       }
-      if (inspectionSources.length) {
-        const inspections = inspectionSources.map((insp) =>
-          this.inspectionRepo.create({
-            vehicleId: invoice.vehicleId,
-            invoiceId: invoice.id,
-            type: insp.type as InspectionType,
-            inspectionDate: insp.date,
-            nextDueDate: insp.nextDueDate,
-          }),
-        );
-        await this.inspectionRepo.save(inspections);
+      // Inspection-Upsert: pro Fahrzeug+Typ nur den Eintrag mit dem spätesten nextDueDate behalten
+      if (inspectionSources.length && invoice.vehicleId) {
+        for (const insp of inspectionSources) {
+          const existing = await this.inspectionRepo.findOne({
+            where: { vehicleId: invoice.vehicleId, type: insp.type as InspectionType },
+            order: { nextDueDate: 'DESC' },
+          });
+          const newDate = insp.nextDueDate;
+          if (!existing) {
+            await this.inspectionRepo.save(this.inspectionRepo.create({
+              vehicleId: invoice.vehicleId,
+              invoiceId: invoice.id,
+              type: insp.type as InspectionType,
+              inspectionDate: insp.date,
+              nextDueDate: newDate,
+            }));
+          } else if (newDate && (!existing.nextDueDate || newDate > existing.nextDueDate)) {
+            // Nur aktualisieren wenn das neue Fälligkeitsdatum später liegt
+            existing.nextDueDate = newDate;
+            existing.inspectionDate = insp.date || existing.inspectionDate;
+            existing.invoiceId = invoice.id;
+            await this.inspectionRepo.save(existing);
+          }
+        }
       }
 
       // Betriebsmittel: aus ZUGFeRD-Positionen ableiten wenn AI nichts findet

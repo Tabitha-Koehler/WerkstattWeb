@@ -51,11 +51,22 @@ export class InspectionsService {
 
   async getOverdue(): Promise<Inspection[]> {
     const today = new Date().toISOString().split('T')[0];
+    // Nur die neueste Prüfung pro Fahrzeug+Typ (DISTINCT ON via subquery)
     return this.inspectionRepo
       .createQueryBuilder('i')
       .leftJoinAndSelect('i.vehicle', 'vehicle')
       .where('i.nextDueDate IS NOT NULL')
       .andWhere('i.nextDueDate < :today', { today })
+      .andWhere('i.vehicleId IS NOT NULL')
+      .andWhere(qb => {
+        const sub = qb.subQuery()
+          .select('MAX(i2.nextDueDate)')
+          .from(Inspection, 'i2')
+          .where('i2.vehicleId = i.vehicleId')
+          .andWhere('i2.type = i.type')
+          .getQuery();
+        return `i.nextDueDate = ${sub}`;
+      })
       .orderBy('i.nextDueDate', 'ASC')
       .getMany();
   }
@@ -72,6 +83,16 @@ export class InspectionsService {
       .where('i.nextDueDate IS NOT NULL')
       .andWhere('i.nextDueDate >= :today', { today })
       .andWhere('i.nextDueDate <= :cutoff', { cutoff: cutoffStr })
+      .andWhere('i.vehicleId IS NOT NULL')
+      .andWhere(qb => {
+        const sub = qb.subQuery()
+          .select('MAX(i2.nextDueDate)')
+          .from(Inspection, 'i2')
+          .where('i2.vehicleId = i.vehicleId')
+          .andWhere('i2.type = i.type')
+          .getQuery();
+        return `i.nextDueDate = ${sub}`;
+      })
       .orderBy('i.nextDueDate', 'ASC')
       .getMany();
   }
