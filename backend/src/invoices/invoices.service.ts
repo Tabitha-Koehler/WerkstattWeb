@@ -440,7 +440,7 @@ export class InvoicesService {
 
     const invoices = await this.invoiceRepo.find({
       where: [{ processingError: false }, { processingError: null as any }],
-      select: ['id', 'rawText', 'pdfPath', 'originalFilename', 'repairContext'],
+      select: ['id', 'rawText', 'pdfPath', 'originalFilename', 'repairContext', 'vehicleId', 'invoiceDate'],
     });
 
     this.reprocessStatus = {
@@ -462,7 +462,7 @@ export class InvoicesService {
     return { message: `Neuverarbeitung gestartet für ${invoices.length} Rechnungen` };
   }
 
-  private async runReprocess(invoices: Pick<Invoice, 'id' | 'rawText' | 'pdfPath' | 'originalFilename' | 'repairContext'>[]) {
+  private async runReprocess(invoices: Pick<Invoice, 'id' | 'rawText' | 'pdfPath' | 'originalFilename' | 'repairContext' | 'vehicleId' | 'invoiceDate'>[]) {
     for (const inv of invoices) {
       const isScanned = !inv.rawText || inv.rawText.trim().length < 100;
       const hasPdf = inv.pdfPath && fs.existsSync(inv.pdfPath);
@@ -483,6 +483,31 @@ export class InvoicesService {
           if (ocrText.trim().length > 50) effectiveText = ocrText;
         }
         const analysis = await this.aiAnalysis.analyzeInvoice(effectiveText, inv.originalFilename ?? '');
+
+        // Inspektionen aktualisieren (überschreibt alte/falsche nextDueDate-Werte)
+        if ((analysis.inspections ?? []).length && inv.vehicleId) {
+          for (const insp of analysis.inspections) {
+            const existing = await this.inspectionRepo.findOne({
+              where: { vehicleId: inv.vehicleId, type: insp.type as InspectionType },
+              order: { nextDueDate: 'DESC' },
+            });
+            const newDate = insp.nextDueDate;
+            if (!existing) {
+              await this.inspectionRepo.save(this.inspectionRepo.create({
+                vehicleId: inv.vehicleId,
+                invoiceId: inv.id,
+                type: insp.type as InspectionType,
+                inspectionDate: insp.date,
+                nextDueDate: newDate,
+              }));
+            } else if (newDate && (!existing.nextDueDate || newDate > existing.nextDueDate)) {
+              existing.nextDueDate = newDate;
+              existing.inspectionDate = insp.date || existing.inspectionDate;
+              existing.invoiceId = inv.id;
+              await this.inspectionRepo.save(existing);
+            }
+          }
+        }
 
         // Anomalie-Map aufbauen
         const anomalyMap = new Map<string, string>();

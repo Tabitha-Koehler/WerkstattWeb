@@ -335,17 +335,37 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
     if (!repairContext) repairContext = 'Regelbasiert extrahiert';
 
     // ── Prüfungen ──────────────────────────────────────────────────────────
+    // Hilfsfunktion: nextDueDate berechnen wenn kein explizites Datum im Text
+    const calcNextDue = (type: 'SP' | 'HU' | 'AU', fromDate: string | null): string | null => {
+      if (!fromDate) return null;
+      const d = new Date(fromDate);
+      if (isNaN(d.getTime())) return null;
+      if (type === 'SP') d.setMonth(d.getMonth() + 6);       // SP alle 6 Monate
+      else if (type === 'HU') d.setFullYear(d.getFullYear() + 2); // HU alle 24 Monate
+      else if (type === 'AU') d.setFullYear(d.getFullYear() + 1); // AU alle 12 Monate
+      return d.toISOString().split('T')[0];
+    };
+    const baseDate = serviceDate || invoiceDate;
     const inspections: InspectionResult[] = [];
     const spNext = text.match(/SP[:\s]+(\d{2})\.(\d{2})\.(\d{4})/i);
     const huNext = text.match(/HU[:\s]+(\d{2})\.(\d{2})\.(\d{4})/i);
-    if (/\bSP\b|Sicherheitspr[üu]fung/i.test(text)) {
-      inspections.push({ type: 'SP', date: serviceDate || invoiceDate, nextDueDate: spNext ? `${spNext[3]}-${spNext[2]}-${spNext[1]}` : null });
+    // Explizites Datum nur verwenden, wenn es NACH dem Rechnungsdatum liegt (sonst ist es das Durchführungsdatum, nicht das Fälligkeitsdatum)
+    const afterBase = (dateStr: string | null): boolean => {
+      if (!dateStr || !baseDate) return false;
+      return dateStr > baseDate;
+    };
+    if (/\bSP\b|Sicherheitspr[üu]fung|SP\s*§\s*29/i.test(text)) {
+      const rawExplicit = spNext ? `${spNext[3]}-${spNext[2]}-${spNext[1]}` : null;
+      const explicit = afterBase(rawExplicit) ? rawExplicit : null;
+      inspections.push({ type: 'SP', date: baseDate, nextDueDate: explicit ?? calcNextDue('SP', baseDate) });
     }
     if (/\bHU\b|Hauptuntersuchung/i.test(text)) {
-      inspections.push({ type: 'HU', date: serviceDate || invoiceDate, nextDueDate: huNext ? `${huNext[3]}-${huNext[2]}-${huNext[1]}` : null });
+      const rawExplicit = huNext ? `${huNext[3]}-${huNext[2]}-${huNext[1]}` : null;
+      const explicit = afterBase(rawExplicit) ? rawExplicit : null;
+      inspections.push({ type: 'HU', date: baseDate, nextDueDate: explicit ?? calcNextDue('HU', baseDate) });
     }
     if (/\bAU\b|Abgasuntersuchung/i.test(text)) {
-      inspections.push({ type: 'AU', date: serviceDate || invoiceDate, nextDueDate: null });
+      inspections.push({ type: 'AU', date: baseDate, nextDueDate: calcNextDue('AU', baseDate) });
     }
 
     // ── Betriebsmittel ─────────────────────────────────────────────────────
@@ -391,6 +411,50 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
           positions.push({ description: desc, quantity: 1, unit: 'Stk', unitPrice: price, totalPrice: price, category: 'OTHER', isAnomaly: false, anomalyReason: null });
           if (positions.length >= 20) break;
         }
+      }
+    }
+
+    // Format C: Hollenberg — "######[desc][qty][EP €][GP €][unit]"
+    // Zeilennummer durch ### ersetzt, Felder ohne Trennzeichen concateniert
+    if (positions.length === 0) {
+      const hollenbergLines = text.match(/^#{3,}.+€.+€/gm) || [];
+      for (const line of hollenbergLines) {
+        const stripped = line.replace(/^#+\s*/, '').trim();
+        // Split by " €" — GP is second-to-last part, unit is after last " €"
+        const priceParts = stripped.split(' €');
+        if (priceParts.length < 2) continue;
+        const unit = (priceParts[priceParts.length - 1] || '').trim().replace(/^[.\s]+/, '');
+        const gpStr = (priceParts[priceParts.length - 2] || '').trim();
+        const gp = parseDE(gpStr.match(/(\d{1,3}(?:\.\d{3})*,\d{2})$/)?.[1] || gpStr);
+        if (!gp || gp <= 0 || isNaN(gp)) continue;
+        let ep = gp;
+        let descQtyPart = '';
+        if (priceParts.length >= 3) {
+          const thirdLast = priceParts[priceParts.length - 3];
+          const epMatch = thirdLast.match(/(\d{1,3}(?:\.\d{3})*,\d{2})$/);
+          if (epMatch) {
+            ep = parseDE(epMatch[1]);
+            descQtyPart = thirdLast.slice(0, thirdLast.length - epMatch[0].length);
+          } else {
+            descQtyPart = priceParts.slice(0, priceParts.length - 2).join(' €');
+          }
+        } else {
+          descQtyPart = priceParts[0];
+        }
+        const qtyMatch = descQtyPart.match(/(\d+(?:,\d+)?)\s*$/);
+        let qty = 1;
+        let desc = descQtyPart.trim();
+        if (qtyMatch) {
+          const parsedQty = parseFloat(qtyMatch[1].replace(',', '.'));
+          if (!isNaN(parsedQty) && parsedQty > 0 && parsedQty < 10000) {
+            qty = parsedQty;
+            desc = descQtyPart.slice(0, descQtyPart.length - qtyMatch[0].length).trim();
+          }
+        }
+        if (desc.length < 2) continue;
+        if (/^(?:Summe|Gesamt|Brutto|Netto|MwSt|USt|Endbetrag)/i.test(desc)) continue;
+        positions.push({ description: desc, quantity: qty, unit: unit || 'Stk', unitPrice: ep, totalPrice: gp, category: 'OTHER', isAnomaly: false, anomalyReason: null });
+        if (positions.length >= 20) break;
       }
     }
 
