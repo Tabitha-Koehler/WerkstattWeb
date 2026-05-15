@@ -6,6 +6,10 @@ import { Vehicle, Invoice, InvoiceStats, Inspection, LatestInspections, TireHist
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private readonly base = '/api';
+  // Upload direkt an Railway um Vercel-Timeout (30s) zu umgehen
+  private readonly uploadBase = window.location.hostname === 'localhost'
+    ? ''
+    : 'https://werkstattweb-production.up.railway.app';
 
   constructor(private http: HttpClient) {}
 
@@ -95,7 +99,7 @@ export class ApiService {
   uploadInvoice(file: File): Observable<Invoice> {
     const formData = new FormData();
     formData.append('file', file);
-    return this.http.post<Invoice>(`${this.base}/invoices/upload`, formData);
+    return this.http.post<Invoice>(`${this.uploadBase}/api/invoices/upload`, formData);
   }
 
   deleteInvoice(id: string): Observable<void> {
@@ -166,6 +170,10 @@ export class ApiService {
 
   getWorkshopAlerts(): Observable<WorkshopAlert[]> {
     return this.http.get<WorkshopAlert[]>(`${this.base}/analytics/workshop-alerts`);
+  }
+
+  syncAnomalyFlags(): Observable<{ updated: number; cleared: number }> {
+    return this.http.post<{ updated: number; cleared: number }>(`${this.base}/analytics/sync-anomaly-flags`, {});
   }
 
   getPriceAnomalies(): Observable<PriceAnomaly[]> {
