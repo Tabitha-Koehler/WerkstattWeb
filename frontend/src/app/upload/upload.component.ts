@@ -60,25 +60,33 @@ export class UploadComponent {
   }
 
   async uploadAll(): Promise<void> {
-    const pending = this.queue.filter(i => i.status === 'pending');
-    if (!pending.length) return;
+    const indices = this.queue
+      .map((_, i) => i)
+      .filter(i => this.queue[i].status === 'pending');
+    if (!indices.length) return;
     this.uploading = true;
 
-    for (const item of pending) {
-      this.updateItem(item, { status: 'uploading' });
-      try {
-        const result = await this.api.uploadInvoice(item.file).toPromise();
-        this.updateItem(item, { status: 'done', result });
-      } catch (err: any) {
-        this.updateItem(item, { status: 'error', error: err?.error?.message ?? err?.message ?? 'Fehler' });
-      }
+    // 5 gleichzeitig verarbeiten
+    const BATCH = 5;
+    for (let b = 0; b < indices.length; b += BATCH) {
+      const batch = indices.slice(b, b + BATCH);
+      await Promise.all(batch.map(i => this.uploadOne(i)));
     }
+
     this.uploading = false;
     this.cdr.detectChanges();
   }
 
-  private updateItem(item: UploadItem, patch: Partial<UploadItem>): void {
-    this.queue = this.queue.map(i => i === item ? { ...i, ...patch } : i);
+  private async uploadOne(idx: number): Promise<void> {
+    const file = this.queue[idx].file;
+    this.queue[idx] = { ...this.queue[idx], status: 'uploading' };
+    this.cdr.detectChanges();
+    try {
+      const result = await this.api.uploadInvoice(file).toPromise();
+      this.queue[idx] = { ...this.queue[idx], status: 'done', result };
+    } catch (err: any) {
+      this.queue[idx] = { ...this.queue[idx], status: 'error', error: err?.error?.message ?? err?.message ?? 'Fehler' };
+    }
     this.cdr.detectChanges();
   }
 
