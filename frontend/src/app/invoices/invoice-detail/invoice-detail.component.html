@@ -1,101 +1,105 @@
 @if (loading()) {
-  <div class="flex justify-center py-20">
-    <div class="spinner"></div>
-  </div>
+  <div class="flex justify-center py-20"><div class="spinner"></div></div>
 }
 
-@if (!loading() && invoice()) {
+@if (invoice(); as inv) {
 
-  <!-- Back + title row -->
+  <!-- Header -->
   <div class="flex items-start gap-4 mb-6">
     <p-button icon="fa-solid fa-arrow-left" [text]="true" [rounded]="true" severity="secondary"
-      (click)="invoice()!.vehicleId ? router.navigate(['/vehicles', invoice()!.vehicleId]) : router.navigate(['/invoices'])" />
+      (click)="inv.vehicleId ? router.navigate(['/vehicles', inv.vehicleId]) : router.navigate(['/invoices'])" />
     <div class="flex-1 min-w-0">
-      <h1 class="page-title truncate">{{ invoice()!.workshopName ?? 'Rechnung' }}</h1>
+      <h1 class="page-title truncate">{{ inv.workshopName ?? 'Rechnung' }}</h1>
       <p class="page-subtitle">
-        Nr. {{ invoice()!.invoiceNumber ?? '–' }} &nbsp;·&nbsp;
-        {{ invoice()!.vehicle?.licensePlate ?? 'Lager' }} &nbsp;·&nbsp;
-        {{ invoice()!.invoiceDate | date:'dd.MM.yyyy' }}
+        Nr. {{ inv.invoiceNumber ?? '–' }} &nbsp;·&nbsp;
+        {{ inv.vehicle?.licensePlate ?? 'Lager' }} &nbsp;·&nbsp;
+        {{ inv.invoiceDate | date:'dd.MM.yyyy' }}
       </p>
     </div>
     <div class="flex items-center gap-2 shrink-0">
-      <p-button
-        [label]="showPdf() ? 'PDF ausblenden' : 'PDF anzeigen'"
-        icon="fa-solid fa-file-pdf"
-        severity="secondary"
-        [outlined]="true"
-        (click)="showPdf.set(!showPdf())" />
-      <p-button icon="fa-solid fa-trash" severity="danger" [outlined]="true" (click)="deleteInvoice()"
-                pTooltip="Rechnung löschen" />
+      <p-button [label]="showPdf() ? 'PDF ausblenden' : 'PDF anzeigen'" icon="fa-solid fa-file-pdf"
+        severity="secondary" [outlined]="true" (click)="showPdf.set(!showPdf())" />
+      <p-button icon="fa-solid fa-trash" severity="danger" [outlined]="true"
+        (click)="deleteInvoice()" pTooltip="Rechnung löschen" />
     </div>
   </div>
 
-  <!-- Warning banner -->
-  @if (anomalies().length > 0) {
+  <!-- Anomalie-Banner -->
+  @if (inv.hasAnomalies) {
     <div class="banner-warning mb-4">
       <i class="fa-solid fa-triangle-exclamation text-lg shrink-0"></i>
       <div>
-        <strong>{{ anomalies().length }} unplausible Position(en) gefunden</strong>
-        @for (a of anomalies(); track a.description) {
-          <div class="text-sm mt-1 opacity-80">
-            <strong>{{ a.description }}</strong> – {{ a.anomalyReason }}
-          </div>
+        <strong>Unplausible Positionen gefunden</strong>
+        @for (p of inv.positions ?? []; track $index) {
+          @if (p.isAnomaly) {
+            <div class="text-sm mt-1 opacity-80"><strong>{{ p.description }}</strong> – {{ p.anomalyReason }}</div>
+          }
         }
       </div>
     </div>
   }
 
-  <!-- Error banner -->
-  @if (invoice()!.processingError) {
+  <!-- Fehler-Banner -->
+  @if (inv.processingError) {
     <div class="banner-error mb-4">
       <i class="fa-solid fa-circle-xmark text-lg shrink-0"></i>
-      <div><strong>Verarbeitungsfehler:</strong> {{ invoice()!.processingErrorMessage }}</div>
+      <div><strong>Verarbeitungsfehler:</strong> {{ inv.processingErrorMessage }}</div>
     </div>
   }
 
-  <!-- Details + AI summary -->
+  <!-- Details + KI-Analyse -->
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-
     <div class="card">
       <h2 class="section-title mb-4">Rechnungsdetails</h2>
       <dl class="space-y-2">
-        @for (row of detailRows(); track row.label) {
-          <div class="flex gap-3 text-sm">
-            <dt class="w-32 shrink-0" style="color:var(--surface-muted)">{{ row.label }}</dt>
-            <dd class="font-medium flex-1" style="color:var(--surface-text)" [innerHTML]="row.value"></dd>
-          </div>
-        }
+        <div class="flex gap-3 text-sm">
+          <dt class="w-32 shrink-0" style="color:var(--surface-muted)">Werkstatt</dt>
+          <dd class="font-medium flex-1" style="color:var(--surface-text)">{{ inv.workshopName ?? '–' }}</dd>
+        </div>
+        <div class="flex gap-3 text-sm">
+          <dt class="w-32 shrink-0" style="color:var(--surface-muted)">Rechnungs-Nr.</dt>
+          <dd class="font-medium flex-1" style="color:var(--surface-text)">{{ inv.invoiceNumber || '–' }}</dd>
+        </div>
+        <div class="flex gap-3 text-sm">
+          <dt class="w-32 shrink-0" style="color:var(--surface-muted)">Datum</dt>
+          <dd class="font-medium flex-1" style="color:var(--surface-text)">{{ inv.invoiceDate | date:'dd.MM.yyyy' }}</dd>
+        </div>
+        <div class="flex gap-3 text-sm">
+          <dt class="w-32 shrink-0" style="color:var(--surface-muted)">Kennzeichen</dt>
+          <dd class="font-medium flex-1" style="color:var(--surface-text)">{{ inv.vehicle?.licensePlate ?? 'Lager' }}</dd>
+        </div>
+        <div class="flex gap-3 text-sm">
+          <dt class="w-32 shrink-0" style="color:var(--surface-muted)">Reparatur</dt>
+          <dd class="font-medium flex-1" style="color:var(--surface-text)">{{ inv.repairContext ?? '–' }}</dd>
+        </div>
         <div class="flex gap-3 text-sm pt-1 border-t" style="border-color:var(--surface-border)">
           <dt class="w-32 shrink-0" style="color:var(--surface-muted)">Gesamtbetrag</dt>
           <dd class="font-bold text-blue-600 dark:text-blue-400 text-lg">
-            {{ invoice()!.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}
+            {{ (inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de') || '–' }}
           </dd>
         </div>
       </dl>
     </div>
-
     <div class="card">
       <h2 class="section-title mb-4">KI-Analyse</h2>
       <p class="text-sm leading-relaxed" style="color:var(--surface-text)">
-        {{ invoice()!.aiSummary ?? 'Keine KI-Zusammenfassung verfügbar.' }}
+        {{ inv.aiSummary || 'Keine Zusammenfassung verfügbar.' }}
       </p>
     </div>
   </div>
 
-  <!-- Inspections found -->
-  @if (inspectionPositions().length > 0) {
+  <!-- Prüfungen -->
+  @if (inv.inspections && inv.inspections.length > 0) {
     <div class="card mb-4">
       <h2 class="section-title mb-4">Prüfungen auf dieser Rechnung</h2>
       <div class="flex gap-3 flex-wrap">
-        @for (insp of inspectionPositions(); track insp.type) {
+        @for (insp of inv.inspections; track $index) {
           <div class="rounded-xl p-4 text-center min-w-36 border"
                style="border-color:var(--surface-border); background:var(--surface-hover)">
             <span class="badge-{{ insp.type.toLowerCase() }} text-sm px-3 py-1">{{ insp.type }}</span>
             <div class="mt-2 text-xs space-y-0.5" style="color:var(--surface-muted)">
               <div>{{ insp.inspectionDate | date:'dd.MM.yyyy' }}</div>
-              @if (insp.nextDueDate) {
-                <div>→ {{ insp.nextDueDate | date:'dd.MM.yyyy' }}</div>
-              }
+              @if (insp.nextDueDate) { <div>→ {{ insp.nextDueDate | date:'dd.MM.yyyy' }}</div> }
             </div>
           </div>
         }
@@ -103,12 +107,12 @@
     </div>
   }
 
-  <!-- Operating supplies -->
-  @if (supplies().length > 0) {
+  <!-- Betriebsmittel -->
+  @if (inv.operatingSupplies && inv.operatingSupplies.length > 0) {
     <div class="card mb-4">
       <h2 class="section-title mb-4">Betriebsmittel</h2>
       <div class="flex gap-2 flex-wrap">
-        @for (s of supplies(); track s.type) {
+        @for (s of inv.operatingSupplies; track $index) {
           <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-sm font-medium"
                 style="background:rgb(234 88 12/0.1); color:#c2410c; border:1px solid rgb(234 88 12/0.2)">
             <i class="fa-solid fa-oil-can text-xs"></i> {{ s.type }} · {{ s.quantity }} {{ s.unit }}
@@ -118,57 +122,64 @@
     </div>
   }
 
-  <!-- Line items table -->
+  <!-- Rechnungspositionen — p-table -->
   <div class="card p-0 overflow-hidden mb-4">
     <div class="card-header">
       <h2 class="section-title mb-0">Rechnungspositionen</h2>
-      <span class="badge-gray">{{ invoice()!.positions?.length ?? 0 }} Positionen</span>
+      <span class="badge-gray">{{ inv.positions?.length ?? 0 }} Positionen</span>
     </div>
-    <table class="data-table w-full">
-      <thead>
+    <p-table [value]="inv.positions ?? []" [tableStyle]="{'width':'100%'}"
+             styleClass="p-datatable-sm" responsiveLayout="scroll" [rowHover]="true">
+      <ng-template pTemplate="header">
         <tr>
-          <th class="w-10">#</th>
+          <th style="width:3rem">#</th>
           <th>Beschreibung</th>
-          <th class="text-right">Menge</th>
-          <th class="text-right">Einzelpreis</th>
-          <th class="text-right">Gesamt</th>
-          <th>Kategorie</th>
-          <th>Warnung</th>
+          <th class="text-right" style="width:8rem">Menge</th>
+          <th class="text-right" style="width:9rem">Einzelpreis</th>
+          <th class="text-right" style="width:9rem">Gesamt</th>
+          <th style="width:9rem">Kategorie</th>
+          <th style="width:12rem">Warnung</th>
         </tr>
-      </thead>
-      <tbody>
-        @for (p of invoice()!.positions ?? []; track p.description; let i = $index) {
-          <tr [class.anomaly-row]="p.isAnomaly">
-            <td class="text-xs" style="color:var(--surface-muted)">{{ i + 1 }}</td>
-            <td>{{ p.description }}</td>
-            <td class="text-right" style="color:var(--surface-muted)">{{ p.quantity }} {{ p.unit }}</td>
-            <td class="text-right" style="color:var(--surface-muted)">{{ p.unitPrice | currency:'EUR':'symbol':'1.2-2':'de' }}</td>
-            <td class="text-right font-semibold">{{ p.totalPrice | currency:'EUR':'symbol':'1.2-2':'de' }}</td>
-            <td>
-              <span class="inline-block text-xs px-2 py-0.5 rounded-full font-medium"
-                    [style.background]="categoryColors[p.category] ?? 'var(--surface-hover)'"
-                    style="color:var(--surface-text)">
-                {{ categoryLabels[p.category] ?? p.category }}
+      </ng-template>
+      <ng-template pTemplate="body" let-p let-i="rowIndex">
+        <tr [class.anomaly-row]="p.isAnomaly">
+          <td class="text-xs" style="color:var(--surface-muted)">{{ i + 1 }}</td>
+          <td>{{ p.description }}</td>
+          <td class="text-right" style="color:var(--surface-muted)">{{ p.quantity }} {{ p.unit }}</td>
+          <td class="text-right" style="color:var(--surface-muted)">{{ p.unitPrice | currency:'EUR':'symbol':'1.2-2':'de' }}</td>
+          <td class="text-right font-semibold">{{ p.totalPrice | currency:'EUR':'symbol':'1.2-2':'de' }}</td>
+          <td>
+            <span class="inline-block text-xs px-2 py-0.5 rounded-full font-medium"
+                  [style.background]="categoryColors[p.category] ?? 'var(--surface-hover)'"
+                  style="color:var(--surface-text)">
+              {{ categoryLabels[p.category] ?? p.category }}
+            </span>
+          </td>
+          <td>
+            @if (p.isAnomaly) {
+              <span class="badge-warning" [title]="p.anomalyReason ?? ''">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ p.anomalyReason?.substring(0,28) }}…
               </span>
-            </td>
-            <td>
-              @if (p.isAnomaly) {
-                <span class="badge-warning" [title]="p.anomalyReason">
-                  <i class="fa-solid fa-triangle-exclamation mr-1"></i>{{ p.anomalyReason?.substring(0,28) }}…
-                </span>
-              }
-            </td>
-          </tr>
-        }
-      </tbody>
-    </table>
+            }
+          </td>
+        </tr>
+      </ng-template>
+      <ng-template pTemplate="emptymessage">
+        <tr><td colspan="7">
+          <div class="empty-state py-8">
+            <i class="fa-solid fa-list text-3xl" style="color:var(--surface-muted)"></i>
+            <p class="text-sm">Keine Positionen extrahiert</p>
+          </div>
+        </td></tr>
+      </ng-template>
+    </p-table>
   </div>
 
   <!-- PDF Viewer -->
   @if (showPdf()) {
     <div class="card">
       <h2 class="section-title mb-4">Original-PDF</h2>
-      <pdf-viewer [src]="pdfUrl" [render-text]="true" [original-size]="false"
+      <pdf-viewer [src]="pdfUrl()" [render-text]="true" [original-size]="false"
         style="display:block;width:100%;height:800px;border-radius:0.5rem;overflow:hidden"></pdf-viewer>
     </div>
   }

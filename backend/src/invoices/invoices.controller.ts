@@ -2,13 +2,16 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Delete,
   Param,
   Query,
+  Body,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
   Res,
+  HttpCode,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -47,6 +50,17 @@ export class InvoicesController {
     return this.invoicesService.getStats();
   }
 
+  @Get('reprocess/status')
+  getReprocessStatus() {
+    return this.invoicesService.getReprocessStatus();
+  }
+
+  @Post('reprocess')
+  @HttpCode(202)
+  startReprocess() {
+    return this.invoicesService.startReprocess();
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.invoicesService.findOne(id);
@@ -71,6 +85,11 @@ export class InvoicesController {
       throw new BadRequestException('Nur PDF-Dateien erlaubt');
     }
     return this.invoicesService.processInvoiceFile(file.path);
+  }
+
+  @Patch(':id/assign')
+  assignVehicle(@Param('id') id: string, @Body() body: { vehicleId: string }) {
+    return this.invoicesService.assignVehicle(id, body.vehicleId);
   }
 
   @Delete(':id')

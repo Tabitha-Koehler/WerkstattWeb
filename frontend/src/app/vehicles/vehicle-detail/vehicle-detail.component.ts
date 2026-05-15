@@ -1,40 +1,169 @@
-import { Component, inject, computed, resource } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { DatePipe, CurrencyPipe } from '@angular/common';
-import { firstValueFrom } from 'rxjs';
+import { DatePipe, CurrencyPipe, DecimalPipe } from '@angular/common';
+import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
 import { ApiService } from '../../core/services/api.service';
-import { LatestInspections } from '../../core/models/models';
+import {
+  Invoice, Vehicle, LatestInspections, TireHistory, MileageHistory, TimelineEvent,
+  TIRE_AXLE_LABELS, TIRE_SEASON_LABELS, MILEAGE_SOURCE_LABELS,
+} from '../../core/models/models';
 
 @Component({
   standalone: true,
   selector: 'app-vehicle-detail',
   templateUrl: './vehicle-detail.component.html',
-  imports: [RouterLink, DatePipe, CurrencyPipe, ButtonModule, TagModule, TooltipModule],
+  imports: [RouterLink, DatePipe, CurrencyPipe, DecimalPipe, ReactiveFormsModule, ButtonModule, TagModule, TooltipModule],
 })
-export class VehicleDetailComponent {
-  private route  = inject(ActivatedRoute);
-  private router = inject(Router);
-  private api    = inject(ApiService);
+export class VehicleDetailComponent implements OnInit {
+  private route   = inject(ActivatedRoute);
+  readonly router = inject(Router);
+  private api     = inject(ApiService);
+  private fb      = inject(FormBuilder);
 
-  private vehicleId = this.route.snapshot.paramMap.get('id')!;
+  loading      = true;
+  vehicle: Vehicle | null = null;
+  invoiceData: Invoice[]  = [];
+  inspections: LatestInspections = {};
+  tireHistory: TireHistory[]     = [];
+  mileageHistory: MileageHistory[] = [];
+  timeline: TimelineEvent[] = [];
 
-  private vehicleRes     = resource({ loader: () => firstValueFrom(this.api.getVehicle(this.vehicleId)) });
-  private invoicesRes    = resource({ loader: () => firstValueFrom(this.api.getInvoices(this.vehicleId)) });
-  private inspectionsRes = resource({ loader: () => firstValueFrom(this.api.getLatestInspections(this.vehicleId)) });
+  totalCost    = 0;
+  anomalyCount = 0;
 
-  vehicle           = computed(() => this.vehicleRes.value());
-  invoices          = computed(() => this.invoicesRes.value() ?? []);
-  latestInspections = computed(() => this.inspectionsRes.value() ?? {} as LatestInspections);
-  loading           = computed(() => this.vehicleRes.isLoading());
-  totalCost         = computed(() => this.invoices().reduce((s, i) => s + (Number(i.totalAmount) || 0), 0));
-  anomalyCount      = computed(() => this.invoices().filter(i => i.hasAnomalies).length);
+  activeTab = signal<'overview' | 'history' | 'invoices'>('overview');
 
-  constructor() {
-    // Redirect if vehicle not found
-    if (this.vehicleRes.error()) this.router.navigate(['/vehicles']);
+  setTab(id: string) { this.activeTab.set(id as 'overview' | 'history' | 'invoices'); }
+
+  showTireForm    = signal(false);
+  showMileageForm = signal(false);
+  savingTire      = signal(false);
+  savingMileage   = signal(false);
+
+  readonly axleOptions = Object.entries(TIRE_AXLE_LABELS).map(([v, l]) => ({ value: v, label: l }));
+  readonly seasonOptions = Object.entries(TIRE_SEASON_LABELS).map(([v, l]) => ({ value: v, label: l }));
+  readonly axleLabel = TIRE_AXLE_LABELS;
+  readonly seasonLabel = TIRE_SEASON_LABELS;
+  readonly mileageSourceLabel = MILEAGE_SOURCE_LABELS;
+
+  tireForm = this.fb.group({
+    changeDate:   [''],
+    axle:         [''],
+    season:       [''],
+    tireSize:     [''],
+    manufacturer: [''],
+    dot:          [''],
+    profileDepth: [null as number | null],
+    mileage:      [null as number | null],
+    notes:        [''],
+  });
+
+  mileageForm = this.fb.group({
+    date:    ['', Validators.required],
+    mileage: [null as number | null, [Validators.required, Validators.min(0)]],
+    notes:   [''],
+  });
+
+  private vehicleId = '';
+
+  readonly timelineIcons: Record<string, string> = {
+    repair: 'fa-wrench',
+    inspection: 'fa-clipboard-check',
+    supply: 'fa-oil-can',
+    tire: 'fa-circle-dot',
+    mileage: 'fa-gauge',
+    invoice: 'fa-receipt',
+  };
+
+  readonly timelineColors: Record<string, string> = {
+    repair: '#3b82f6',
+    inspection: '#10b981',
+    supply: '#f59e0b',
+    tire: '#8b5cf6',
+    mileage: '#6b7280',
+    invoice: '#64748b',
+  };
+
+  ngOnInit(): void {
+    this.vehicleId = this.route.snapshot.paramMap.get('id')!;
+
+    this.api.getVehicle(this.vehicleId).subscribe({
+      next: (v) => { this.vehicle = v; this.loading = false; },
+    });
+
+    this.api.getInvoices(this.vehicleId).subscribe({
+      next: (data) => {
+        this.invoiceData  = data;
+        this.totalCost    = data.reduce((s, i) => s + (Number(i.totalAmount) || 0), 0);
+        this.anomalyCount = data.filter(i => i.hasAnomalies).length;
+      },
+    });
+
+    this.api.getLatestInspections(this.vehicleId).subscribe({
+      next: (data) => { this.inspections = data; },
+    });
+
+    this.api.getVehicleTimeline(this.vehicleId).subscribe({
+      next: (data) => { this.timeline = data; },
+    });
+
+    this.loadTireHistory();
+    this.loadMileageHistory();
+  }
+
+  private loadTireHistory(): void {
+    this.api.getTireHistory(this.vehicleId).subscribe({
+      next: (data) => { this.tireHistory = data; },
+    });
+  }
+
+  private loadMileageHistory(): void {
+    this.api.getMileageHistory(this.vehicleId).subscribe({
+      next: (data) => { this.mileageHistory = data; },
+    });
+  }
+
+  saveTireEntry(): void {
+    if (this.savingTire()) return;
+    this.savingTire.set(true);
+    this.api.addTireEntry(this.vehicleId, this.tireForm.value as any).subscribe({
+      next: () => {
+        this.loadTireHistory();
+        this.showTireForm.set(false);
+        this.tireForm.reset();
+        this.savingTire.set(false);
+      },
+      error: () => this.savingTire.set(false),
+    });
+  }
+
+  saveMileageEntry(): void {
+    if (this.mileageForm.invalid || this.savingMileage()) return;
+    this.savingMileage.set(true);
+    this.api.addMileageEntry(this.vehicleId, { ...this.mileageForm.value, source: 'MANUAL' } as any).subscribe({
+      next: () => {
+        this.loadMileageHistory();
+        this.showMileageForm.set(false);
+        this.mileageForm.reset();
+        this.savingMileage.set(false);
+      },
+      error: () => this.savingMileage.set(false),
+    });
+  }
+
+  deleteTireEntry(id: string): void {
+    this.api.deleteTireEntry(this.vehicleId, id).subscribe({
+      next: () => this.loadTireHistory(),
+    });
+  }
+
+  deleteMileageEntry(id: string): void {
+    this.api.deleteMileageEntry(this.vehicleId, id).subscribe({
+      next: () => this.loadMileageHistory(),
+    });
   }
 
   goToInvoice(inv: { id: string }): void { this.router.navigate(['/invoices', inv.id]); }

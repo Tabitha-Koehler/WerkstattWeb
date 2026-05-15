@@ -1,28 +1,65 @@
-import { Component, inject, computed, resource } from '@angular/core';
+import { Component, inject, computed, signal, OnDestroy } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DatePipe, CurrencyPipe } from '@angular/common';
-import { firstValueFrom } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { ButtonModule } from 'primeng/button';
 import { ApiService } from '../core/services/api.service';
+import { ReprocessStatus } from '../core/models/models';
 
 @Component({
   standalone: true,
   selector: 'app-dashboard',
   templateUrl: './dashboard.component.html',
-  imports: [RouterLink, DatePipe, CurrencyPipe],
+  imports: [RouterLink, DatePipe, CurrencyPipe, ButtonModule],
 })
-export class DashboardComponent {
+export class DashboardComponent implements OnDestroy {
   private api = inject(ApiService);
 
-  private statsRes    = resource({ loader: () => firstValueFrom(this.api.getInvoiceStats()) });
-  private invoicesRes = resource({ loader: () => firstValueFrom(this.api.getInvoices()) });
-  private overdueRes  = resource({ loader: () => firstValueFrom(this.api.getOverdueInspections()) });
-  private upcomingRes = resource({ loader: () => firstValueFrom(this.api.getUpcomingInspections(60)) });
+  stats    = toSignal(this.api.getInvoiceStats());
+  invoices = toSignal(this.api.getInvoices());
+  overdue  = toSignal(this.api.getOverdueInspections());
+  upcoming = toSignal(this.api.getUpcomingInspections(60));
 
-  loading             = computed(() => this.statsRes.isLoading() || this.invoicesRes.isLoading());
-  stats               = computed(() => this.statsRes.value());
-  recentInvoices      = computed(() => (this.invoicesRes.value() ?? []).slice(0, 5));
-  overdueInspections  = computed(() => this.overdueRes.value()  ?? []);
-  upcomingInspections = computed(() => this.upcomingRes.value() ?? []);
+  loading        = computed(() => this.stats() === undefined || this.invoices() === undefined);
+  recentInvoices = computed(() => (this.invoices() ?? []).slice(0, 5));
+
+  reprocessStatus = signal<ReprocessStatus | null>(null);
+  reprocessStarted = signal(false);
+  private pollInterval: any = null;
+
+  startReprocess(): void {
+    this.reprocessStarted.set(true);
+    this.api.startReprocess().subscribe({
+      next: () => {
+        this.pollStatus();
+        this.pollInterval = setInterval(() => this.pollStatus(), 1500);
+      },
+    });
+  }
+
+  private pollStatus(): void {
+    this.api.getReprocessStatus().subscribe({
+      next: (status) => {
+        this.reprocessStatus.set(status);
+        if (!status.running && this.pollInterval) {
+          clearInterval(this.pollInterval);
+          this.pollInterval = null;
+          // Stats neu laden
+          this.api.getInvoiceStats().subscribe(s => this.stats = toSignal(this.api.getInvoiceStats()));
+        }
+      },
+    });
+  }
+
+  get progressPercent(): number {
+    const s = this.reprocessStatus();
+    if (!s || s.total === 0) return 0;
+    return Math.round((s.done / s.total) * 100);
+  }
+
+  ngOnDestroy(): void {
+    if (this.pollInterval) clearInterval(this.pollInterval);
+  }
 
   daysUntil(dateStr: string): number {
     return Math.ceil((new Date(dateStr).getTime() - Date.now()) / 86_400_000);

@@ -1,27 +1,34 @@
 # ── Stage 1: Build ────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /app
 
+ENV PATH /app/node_modules/.bin:$PATH
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+
+RUN npm config set strict-ssl false
+
 COPY package*.json ./
-RUN npm ci
+RUN npm install
 
 COPY . .
-RUN npm run build
+RUN nest build
 
 # ── Stage 2: Production ───────────────────────────
-FROM node:20-alpine AS production
+FROM node:20-slim AS production
 
 WORKDIR /app
 
 ENV NODE_ENV=production
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+
+RUN npm config set strict-ssl false
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev
 
 COPY --from=builder /app/dist ./dist
 
-# Uploads-Ordner anlegen
 RUN mkdir -p /app/uploads /data/rechnungen_pdf
 
 EXPOSE 3000

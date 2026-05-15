@@ -8,11 +8,14 @@ import { InspectionsModule } from './inspections/inspections.module';
 import { FileWatcherModule } from './file-watcher/file-watcher.module';
 import { PdfParserModule } from './pdf-parser/pdf-parser.module';
 import { AiAnalysisModule } from './ai-analysis/ai-analysis.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { Vehicle } from './database/entities/vehicle.entity';
 import { Invoice } from './database/entities/invoice.entity';
 import { InvoicePosition } from './database/entities/invoice-position.entity';
 import { Inspection } from './database/entities/inspection.entity';
 import { OperatingSupply } from './database/entities/operating-supply.entity';
+import { TireHistory } from './database/entities/tire-history.entity';
+import { MileageHistory } from './database/entities/mileage-history.entity';
 
 @Module({
   imports: [
@@ -30,7 +33,7 @@ import { OperatingSupply } from './database/entities/operating-supply.entity';
         username: config.get('database.username'),
         password: config.get('database.password'),
         database: config.get('database.name'),
-        entities: [Vehicle, Invoice, InvoicePosition, Inspection, OperatingSupply],
+        entities: [Vehicle, Invoice, InvoicePosition, Inspection, OperatingSupply, TireHistory, MileageHistory],
         synchronize: true,
         logging: false,
       }),
@@ -41,6 +44,7 @@ import { OperatingSupply } from './database/entities/operating-supply.entity';
     FileWatcherModule,
     PdfParserModule,
     AiAnalysisModule,
+    AnalyticsModule,
   ],
 })
 export class AppModule {}

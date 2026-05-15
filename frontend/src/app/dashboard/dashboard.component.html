@@ -6,6 +6,74 @@
     <p class="page-subtitle">Übersicht der Werkstattabrechnungen</p>
   </div>
 
+  <!-- Reprocess-Panel -->
+  @if (!reprocessStarted()) {
+    <div class="card flex items-center justify-between gap-4"
+         style="border-left:4px solid var(--p-primary-color)">
+      <div>
+        <p class="font-semibold text-sm" style="color:var(--surface-text)">
+          Rechnungen neu analysieren
+        </p>
+        <p class="text-xs mt-0.5" style="color:var(--surface-muted)">
+          Alle {{ stats()?.total ?? 348 }} Rechnungen nochmals auf Anomalien prüfen (Werkzeuge, unplausible Mengen, Fremdpositionen)
+        </p>
+      </div>
+      <p-button label="Jetzt analysieren" icon="fa-solid fa-magnifying-glass"
+                (click)="startReprocess()" [loading]="false" />
+    </div>
+  }
+
+  <!-- Fortschrittsanzeige -->
+  @if (reprocessStarted() && reprocessStatus(); as s) {
+    <div class="card" style="border-left:4px solid var(--p-primary-color)">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+          @if (s.running) {
+            <div class="spinner" style="width:1rem;height:1rem;border-width:2px"></div>
+          } @else {
+            <i class="fa-solid fa-check-circle text-emerald-500"></i>
+          }
+          <span class="font-semibold text-sm" style="color:var(--surface-text)">
+            {{ s.running ? 'Analysiere Rechnungen...' : 'Analyse abgeschlossen' }}
+          </span>
+        </div>
+        <span class="text-sm font-semibold" style="color:var(--surface-muted)">
+          {{ s.done }} / {{ s.total }}
+        </span>
+      </div>
+
+      <!-- Fortschrittsbalken -->
+      <div class="w-full rounded-full h-2 mb-3" style="background:var(--surface-border)">
+        <div class="h-2 rounded-full transition-all duration-300"
+             style="background:var(--p-primary-color)"
+             [style.width]="progressPercent + '%'">
+        </div>
+      </div>
+
+      <!-- Ergebnisse -->
+      <div class="grid grid-cols-3 gap-3 text-center">
+        <div class="rounded-lg p-2" style="background:var(--surface-hover)">
+          <div class="text-lg font-bold text-amber-600 dark:text-amber-400">{{ s.anomaliesFound }}</div>
+          <div class="text-xs" style="color:var(--surface-muted)">Anomalien gefunden</div>
+        </div>
+        <div class="rounded-lg p-2" style="background:var(--surface-hover)">
+          <div class="text-lg font-bold" style="color:var(--surface-text)">{{ s.done }}</div>
+          <div class="text-xs" style="color:var(--surface-muted)">Verarbeitet</div>
+        </div>
+        <div class="rounded-lg p-2" style="background:var(--surface-hover)">
+          <div class="text-lg font-bold" [class]="s.errors > 0 ? 'text-red-500' : 'text-slate-400'">{{ s.errors }}</div>
+          <div class="text-xs" style="color:var(--surface-muted)">Fehler</div>
+        </div>
+      </div>
+
+      @if (s.running && s.currentFile) {
+        <p class="text-xs mt-2 truncate" style="color:var(--surface-muted)">
+          Aktuelle Datei: {{ s.currentFile }}
+        </p>
+      }
+    </div>
+  }
+
   <!-- Loading -->
   @if (loading()) {
     <div class="flex justify-center py-20">
@@ -71,15 +139,15 @@
     </div>
 
     <!-- Overdue inspections -->
-    @if (overdueInspections().length > 0) {
+    @if ((overdue()?.length ?? 0) > 0) {
       <div class="card border-l-4 border-red-500">
         <div class="flex items-center gap-2 mb-4">
           <i class="fa-solid fa-circle text-red-500 text-xs"></i>
           <h2 class="font-semibold" style="color:var(--surface-text)">Überfällige Prüfungen</h2>
-          <span class="badge-error ml-1">{{ overdueInspections().length }}</span>
+          <span class="badge-error ml-1">{{ overdue().length }}</span>
         </div>
         <div class="space-y-2">
-          @for (item of overdueInspections(); track item.vehicleId) {
+          @for (item of overdue(); track item.vehicleId) {
             <a [routerLink]="['/vehicles', item.vehicleId]"
                class="flex items-center justify-between p-3 rounded-xl transition-colors no-underline"
                style="background:rgb(239 68 68 / 0.06); border:1px solid rgb(239 68 68 / 0.15)"
@@ -100,16 +168,16 @@
     }
 
     <!-- Upcoming inspections -->
-    @if (upcomingInspections().length > 0) {
+    @if ((upcoming()?.length ?? 0) > 0) {
       <div class="card">
         <div class="flex items-center gap-2 mb-4">
           <i class="fa-solid fa-circle text-amber-500 text-xs"></i>
           <h2 class="font-semibold" style="color:var(--surface-text)">Demnächst fällig</h2>
-          <span class="badge-warning ml-1">{{ upcomingInspections().length }}</span>
+          <span class="badge-warning ml-1">{{ upcoming().length }}</span>
           <span class="text-xs ml-auto" style="color:var(--surface-muted)">innerhalb 60 Tage</span>
         </div>
         <div class="space-y-2">
-          @for (item of upcomingInspections(); track item.vehicleId) {
+          @for (item of upcoming(); track item.vehicleId) {
             <a [routerLink]="['/vehicles', item.vehicleId]"
                class="flex items-center justify-between p-3 rounded-xl transition-colors no-underline"
                style="background:var(--surface-hover); border:1px solid var(--surface-border)"

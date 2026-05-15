@@ -16,6 +16,7 @@ interface UploadItem {
 
 @Component({
   standalone: true,
+
   selector: 'app-upload',
   templateUrl: './upload.component.html',
   imports: [CurrencyPipe, ButtonModule, TagModule, ProgressBarModule],

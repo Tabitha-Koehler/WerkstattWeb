@@ -31,12 +31,13 @@ services:
       DB_NAME: werkstattweb
       OLLAMA_URL: http://host-gateway:11434
       OLLAMA_MODEL: llama3.2
+      OLLAMA_ENABLED: "false"
       WATCH_FOLDER: /data/rechnungen_pdf
       PORT: "3000"
     ports:
       - "3000:3000"
     volumes:
-      - ./rechnungen_pdf:/data/rechnungen_pdf:ro
+      - C:\Users\Tabitha\Desktop\Reparaturrechnungen:/data/rechnungen_pdf:ro
       - uploads_data:/app/uploads
     depends_on:
       db:

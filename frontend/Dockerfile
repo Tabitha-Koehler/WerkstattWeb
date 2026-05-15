@@ -1,7 +1,12 @@
 # ── Stage 1: Build Angular App ───────────────────
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /app
+
+ENV PATH /app/node_modules/.bin:$PATH
+ENV NODE_TLS_REJECT_UNAUTHORIZED=0
+
+RUN npm config set strict-ssl false
 
 COPY package*.json ./
 RUN npm install --legacy-peer-deps
@@ -12,7 +17,6 @@ RUN npm run build
 # ── Stage 2: Nginx ────────────────────────────────
 FROM nginx:alpine
 
-# Standard-Config entfernen
 RUN rm /etc/nginx/conf.d/default.conf
 
 COPY nginx.conf /etc/nginx/conf.d/default.conf

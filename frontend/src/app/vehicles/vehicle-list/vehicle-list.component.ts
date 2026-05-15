@@ -1,6 +1,7 @@
-import { Component, inject, signal, computed, resource } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { Router } from '@angular/router';
-import { firstValueFrom } from 'rxjs';
+import { toSignal, toObservable } from '@angular/core/rxjs-interop';
+import { switchMap } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { TooltipModule } from 'primeng/tooltip';
 import { ApiService } from '../../core/services/api.service';
@@ -9,6 +10,7 @@ import { VehicleDialogComponent } from '../vehicle-dialog/vehicle-dialog.compone
 
 @Component({
   standalone: true,
+
   selector: 'app-vehicle-list',
   templateUrl: './vehicle-list.component.html',
   imports: [ButtonModule, TooltipModule, VehicleDialogComponent],
@@ -17,16 +19,15 @@ export class VehicleListComponent {
   private api    = inject(ApiService);
   private router = inject(Router);
 
-  // Incrementing this signal triggers a reload of the resource
-  private reloadTrigger = signal(0);
+  reloadTrigger = signal(0);
 
-  private vehiclesRes = resource({
-    params: () => this.reloadTrigger(),
-    loader: () => firstValueFrom(this.api.getVehicles()),
-  });
+  // Direct signal via toObservable + switchMap for reload support
+  allVehicles = toSignal(
+    toObservable(this.reloadTrigger).pipe(switchMap(() => this.api.getVehicles()))
+  );
 
-  vehicles       = computed(() => this.vehiclesRes.value() ?? [] as Vehicle[]);
-  loading        = computed(() => this.vehiclesRes.isLoading());
+  vehicles       = computed(() => this.allVehicles() ?? [] as Vehicle[]);
+  loading        = computed(() => this.allVehicles() === undefined);
   errorMsg       = signal('');
   dialogOpen     = signal(false);
   editingVehicle = signal<Vehicle | null>(null);

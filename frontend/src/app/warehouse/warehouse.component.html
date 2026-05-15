@@ -6,61 +6,59 @@
     <p class="page-subtitle">Rechnungen ohne Fahrzeugkennzeichen</p>
   </div>
 
+  <!-- Stats -->
+  <div class="grid grid-cols-2 gap-4">
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-3">
+        <span class="section-title">Lagerrechnungen</span>
+        <span class="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center dark:bg-violet-500/20 dark:text-violet-400">
+          <i class="fa-solid fa-warehouse"></i>
+        </span>
+      </div>
+      <div class="stat-card-value text-violet-600 dark:text-violet-400">{{ tableData().length }}</div>
+      <div class="stat-card-label">Gesamt</div>
+    </div>
+    <div class="stat-card">
+      <div class="flex items-center justify-between mb-3">
+        <span class="section-title">Gesamtbetrag</span>
+        <span class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center dark:bg-emerald-500/20 dark:text-emerald-400">
+          <i class="fa-solid fa-euro-sign"></i>
+        </span>
+      </div>
+      <div class="stat-card-value text-emerald-600 dark:text-emerald-400 text-2xl">
+        {{ totalCost() | currency:'EUR':'symbol':'1.2-2':'de' }}
+      </div>
+      <div class="stat-card-label">Summe</div>
+    </div>
+  </div>
+
   <!-- Loading -->
   @if (loading()) {
-    <div class="flex justify-center py-20">
-      <div class="spinner"></div>
-    </div>
+    <div class="flex justify-center py-20"><div class="spinner"></div></div>
   }
 
+  <!-- Table -->
   @if (!loading()) {
-
-    <!-- Stats -->
-    <div class="grid grid-cols-2 gap-4">
-      <div class="stat-card">
-        <div class="flex items-center justify-between mb-3">
-          <span class="section-title">Lagerrechnungen</span>
-          <span class="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center dark:bg-violet-500/20 dark:text-violet-400">
-            <i class="fa-solid fa-warehouse"></i>
-          </span>
-        </div>
-        <div class="stat-card-value text-violet-600 dark:text-violet-400">{{ invoices().length }}</div>
-        <div class="stat-card-label">Gesamt</div>
-      </div>
-      <div class="stat-card">
-        <div class="flex items-center justify-between mb-3">
-          <span class="section-title">Gesamtbetrag</span>
-          <span class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center dark:bg-emerald-500/20 dark:text-emerald-400">
-            <i class="fa-solid fa-euro-sign"></i>
-          </span>
-        </div>
-        <div class="stat-card-value text-emerald-600 dark:text-emerald-400 text-2xl">
-          {{ totalCost() | currency:'EUR':'symbol':'1.2-2':'de' }}
-        </div>
-        <div class="stat-card-label">Summe</div>
-      </div>
-    </div>
-
-    <!-- Table -->
-    <div class="card p-0 overflow-hidden">
-      <table class="data-table w-full">
+    <div class="card p-0">
+      <table class="data-table">
         <thead>
           <tr>
-            <th>Datum</th>
+            <th style="width:9rem">Datum</th>
             <th>Werkstatt / Lieferant</th>
             <th>Inhalt</th>
-            <th class="text-right">Betrag</th>
-            <th>Status</th>
+            <th class="text-right" style="width:9rem">Betrag</th>
+            <th style="width:7rem">Status</th>
+            <th style="width:14rem">Fahrzeug</th>
           </tr>
         </thead>
         <tbody>
-          @for (inv of invoices(); track inv.id) {
+          @for (inv of pagedInvoices(); track inv.id) {
             <tr (click)="goToDetail(inv)" [class.anomaly-row]="inv.hasAnomalies">
               <td class="whitespace-nowrap" style="color:var(--surface-muted)">
                 {{ inv.invoiceDate | date:'dd.MM.yyyy' }}
               </td>
               <td class="font-semibold">{{ inv.workshopName ?? '–' }}</td>
-              <td class="max-w-xs truncate" style="color:var(--surface-muted)">
+              <td style="color:var(--surface-muted); max-width:20rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
                 {{ inv.repairContext ?? inv.aiSummary ?? '–' }}
               </td>
               <td class="text-right font-semibold whitespace-nowrap">
@@ -75,19 +73,69 @@
                   <p-tag severity="success" value="OK" icon="fa-solid fa-check" />
                 }
               </td>
+              <td (click)="$event.stopPropagation()">
+                @if (assigningId() === inv.id) {
+                  <div class="flex items-center gap-1">
+                    <select
+                      class="text-xs border rounded px-1 py-1 flex-1"
+                      style="background:var(--surface-card); color:var(--text-color); border-color:var(--surface-border)"
+                      [value]="selectedVehicleId()"
+                      (change)="selectedVehicleId.set($any($event.target).value)"
+                      (click)="$event.stopPropagation()">
+                      <option value="">Fahrzeug wählen…</option>
+                      @for (v of vehicles(); track v.id) {
+                        <option [value]="v.id">{{ vehicleLabel(v) }}</option>
+                      }
+                    </select>
+                    <button
+                      class="btn-icon text-emerald-600"
+                      title="Zuordnen"
+                      [disabled]="!selectedVehicleId() || assigning()"
+                      (click)="confirmAssign($event, inv)">
+                      <i class="fa-solid fa-check"></i>
+                    </button>
+                    <button
+                      class="btn-icon text-red-500"
+                      title="Abbrechen"
+                      (click)="cancelAssign($event)">
+                      <i class="fa-solid fa-xmark"></i>
+                    </button>
+                  </div>
+                } @else {
+                  <button
+                    class="btn-icon text-violet-600"
+                    title="Fahrzeug zuordnen"
+                    (click)="startAssign($event, inv)">
+                    <i class="fa-solid fa-link"></i> <span class="text-xs ml-1">Zuordnen</span>
+                  </button>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6">
+                <div class="empty-state">
+                  <i class="fa-solid fa-warehouse text-5xl" style="color:var(--surface-muted)"></i>
+                  <p class="font-medium">Noch keine Lagerrechnungen</p>
+                  <p class="text-sm">Rechnungen ohne Kennzeichen landen automatisch hier.</p>
+                </div>
+              </td>
             </tr>
           }
         </tbody>
       </table>
 
-      @if (invoices().length === 0) {
-        <div class="empty-state">
-          <i class="fa-solid fa-warehouse text-5xl" style="color:var(--surface-muted)"></i>
-          <p class="font-medium">Noch keine Lagerrechnungen</p>
-          <p class="text-sm">Rechnungen ohne Kennzeichen landen automatisch hier.</p>
+      @if (tableData().length > rows()) {
+        <div style="border-top:1px solid var(--surface-border)">
+          <p-paginator
+            [first]="first()"
+            [rows]="rows()"
+            [totalRecords]="tableData().length"
+            [rowsPerPageOptions]="[25,50,100]"
+            (onPageChange)="onPageChange($event)" />
         </div>
       }
     </div>
-
   }
+
 </div>

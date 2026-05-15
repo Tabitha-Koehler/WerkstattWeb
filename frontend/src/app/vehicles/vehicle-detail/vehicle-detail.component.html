@@ -1,10 +1,8 @@
-@if (loading()) {
-  <div class="flex justify-center py-20">
-    <div class="spinner"></div>
-  </div>
+@if (loading) {
+  <div class="flex justify-center py-20"><div class="spinner"></div></div>
 }
 
-@if (!loading() && vehicle()) {
+@if (vehicle; as v) {
 
   <!-- Header -->
   <div class="flex items-center gap-4 mb-6">
@@ -13,23 +11,29 @@
       <i class="fa-solid fa-truck text-white text-xl"></i>
     </div>
     <div class="flex-1 min-w-0">
-      <h1 class="page-title text-blue-600 dark:text-blue-400">{{ vehicle()!.licensePlate }}</h1>
+      <div class="flex items-center gap-3">
+        <h1 class="page-title text-blue-600 dark:text-blue-400">{{ v.licensePlate }}</h1>
+        @if (v.vehicleNumber) {
+          <span class="badge-gray text-sm">Nr. {{ v.vehicleNumber }}</span>
+        }
+      </div>
       <p class="page-subtitle">
-        {{ vehicle()!.vehicleType ?? '' }} {{ vehicle()!.manufacturer ?? '' }} {{ vehicle()!.model ?? '' }}
-        @if (vehicle()!.year) { · {{ vehicle()!.year }} }
+        {{ v.vehicleType ?? '' }} {{ v.manufacturer ?? '' }} {{ v.model ?? '' }}
+        @if (v.year) { · {{ v.year }} }
+        @if (v.vin) { · VIN: <span class="font-mono text-xs">{{ v.vin }}</span> }
       </p>
     </div>
     <p-button label="Rechnung hochladen" icon="fa-solid fa-upload" severity="secondary" [outlined]="true" routerLink="/upload" />
   </div>
 
   <!-- Stats -->
-  <div class="grid grid-cols-3 gap-4 mb-6">
+  <div class="grid grid-cols-3 gap-4 mb-4">
     <div class="stat-card">
       <div class="flex items-center justify-between mb-2">
         <span class="section-title">Rechnungen</span>
         <i class="fa-solid fa-receipt" style="color:var(--surface-muted)"></i>
       </div>
-      <div class="stat-card-value text-blue-600 dark:text-blue-400">{{ invoices().length }}</div>
+      <div class="stat-card-value text-blue-600 dark:text-blue-400">{{ invoiceData.length }}</div>
       <div class="stat-card-label">Gesamt</div>
     </div>
     <div class="stat-card">
@@ -38,43 +42,59 @@
         <i class="fa-solid fa-euro-sign" style="color:var(--surface-muted)"></i>
       </div>
       <div class="stat-card-value text-emerald-600 dark:text-emerald-400 text-2xl">
-        {{ totalCost() | currency:'EUR':'symbol':'1.2-2':'de' }}
+        {{ totalCost | currency:'EUR':'symbol':'1.2-2':'de' }}
       </div>
       <div class="stat-card-label">Gesamt</div>
     </div>
-    <div class="stat-card" [class.border-l-4]="anomalyCount()>0" [class.border-amber-400]="anomalyCount()>0">
+    <div class="stat-card" [class.border-l-4]="anomalyCount>0" [class.border-amber-400]="anomalyCount>0">
       <div class="flex items-center justify-between mb-2">
         <span class="section-title">Warnungen</span>
         <i class="fa-solid fa-triangle-exclamation" style="color:var(--surface-muted)"></i>
       </div>
-      <div class="stat-card-value" [class]="anomalyCount()>0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'">
-        {{ anomalyCount() }}
+      <div class="stat-card-value" [class]="anomalyCount>0 ? 'text-amber-600 dark:text-amber-400' : 'text-slate-400'">
+        {{ anomalyCount }}
       </div>
       <div class="stat-card-label">Anomalien</div>
     </div>
   </div>
 
-  <!-- Inspection status SP/HU/AU -->
+  <!-- Tab-Navigation -->
+  <div class="flex gap-1 mb-6 p-1 rounded-xl" style="background:var(--surface-hover); width:fit-content">
+    @for (tab of [{id:'overview',label:'Übersicht',icon:'fa-gauge'},{id:'history',label:'Fahrzeughistorie',icon:'fa-clock-rotate-left'},{id:'invoices',label:'Rechnungen',icon:'fa-receipt'}]; track tab.id) {
+      <button class="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+              [style]="activeTab() === tab.id ? 'background:var(--surface-card); box-shadow:0 1px 3px rgba(0,0,0,.1); color:var(--surface-text)' : 'color:var(--surface-muted)'"
+              (click)="setTab(tab.id)">
+        <i class="fa-solid {{ tab.icon }} text-xs"></i>
+        {{ tab.label }}
+        @if (tab.id === 'history' && timeline.length > 0) {
+          <span class="text-xs px-1.5 py-0.5 rounded-full" style="background:var(--p-primary-color); color:#fff; font-size:10px">{{ timeline.length }}</span>
+        }
+      </button>
+    }
+  </div>
+
+  <!-- TAB: Übersicht -->
+  @if (activeTab() === 'overview') {
+
+  <!-- Prüfungsstatus SP/HU/AU -->
   <div class="card mb-6">
     <h2 class="section-title mb-4">Prüfungsstatus</h2>
     <div class="grid grid-cols-3 gap-4">
-      @for (type of ['SP','HU','AU']; track type) {
+      @for (type of ['SP','HU','AU']; track $index) {
         <div class="rounded-xl p-4 text-center border"
              style="border-color:var(--surface-border); background:var(--surface-hover)">
           <span class="badge-{{ type.toLowerCase() }} text-sm px-4 py-1.5">{{ type }}</span>
-          @if (latestInspections()[type]) {
+          @if (inspections[type]) {
             <div class="mt-3 space-y-1 text-sm">
-              <div style="color:var(--surface-muted)">
-                {{ latestInspections()[type]!.inspectionDate | date:'dd.MM.yyyy' }}
-              </div>
-              @if (latestInspections()[type]!.nextDueDate) {
+              <div style="color:var(--surface-muted)">{{ inspections[type]!.inspectionDate | date:'dd.MM.yyyy' }}</div>
+              @if (inspections[type]!.nextDueDate) {
                 <div>
                   <div class="text-xs" style="color:var(--surface-muted)">Fällig</div>
-                  <strong [class]="inspectionStatusClass(latestInspections()[type]!.nextDueDate!)">
-                    {{ latestInspections()[type]!.nextDueDate | date:'dd.MM.yyyy' }}
+                  <strong [class]="inspectionStatusClass(inspections[type]!.nextDueDate!)">
+                    {{ inspections[type]!.nextDueDate | date:'dd.MM.yyyy' }}
                   </strong>
-                  <div class="text-xs mt-0.5" [class]="inspectionStatusClass(latestInspections()[type]!.nextDueDate!)">
-                    {{ inspectionStatusText(latestInspections()[type]!.nextDueDate!) }}
+                  <div class="text-xs mt-0.5" [class]="inspectionStatusClass(inspections[type]!.nextDueDate!)">
+                    {{ inspectionStatusText(inspections[type]!.nextDueDate!) }}
                   </div>
                 </div>
               } @else {
@@ -89,25 +109,292 @@
     </div>
   </div>
 
-  <!-- Invoice list -->
-  <div class="card p-0 overflow-hidden">
+  <!-- Kilometerstand-Verlauf -->
+  <div class="card mb-6 p-0">
+    <div class="card-header">
+      <div>
+        <h2 class="section-title mb-0">Kilometerstand</h2>
+        @if (mileageHistory.length > 0) {
+          <p class="text-xs mt-0.5" style="color:var(--surface-muted)">
+            Aktuell: <strong>{{ mileageHistory[0].mileage | number:'1.0-0':'de' }} km</strong>
+          </p>
+        }
+      </div>
+      <p-button icon="fa-solid fa-plus" label="Eintrag" size="small" [text]="true"
+                (click)="showMileageForm.set(!showMileageForm())" />
+    </div>
+
+    @if (showMileageForm()) {
+      <div class="px-4 pb-4 border-b" style="border-color:var(--surface-border)">
+        <form [formGroup]="mileageForm" class="flex flex-wrap gap-3 items-end">
+          <div>
+            <label class="form-label">Datum *</label>
+            <input type="date" class="form-input" formControlName="date" style="width:10rem">
+          </div>
+          <div>
+            <label class="form-label">Kilometerstand *</label>
+            <input type="number" class="form-input" formControlName="mileage"
+                   placeholder="285000" style="width:10rem">
+          </div>
+          <div class="flex-1 min-w-32">
+            <label class="form-label">Notiz</label>
+            <input type="text" class="form-input" formControlName="notes" placeholder="Optional">
+          </div>
+          <div class="flex gap-2">
+            <p-button label="Speichern" icon="fa-solid fa-check" size="small"
+                      [disabled]="mileageForm.invalid || savingMileage()"
+                      (click)="saveMileageEntry()" />
+            <p-button icon="fa-solid fa-xmark" size="small" severity="secondary" [text]="true"
+                      (click)="showMileageForm.set(false)" />
+          </div>
+        </form>
+      </div>
+    }
+
+    @if (mileageHistory.length > 0) {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Datum</th>
+            <th class="text-right">Kilometerstand</th>
+            <th>Quelle</th>
+            <th>Notiz</th>
+            <th style="width:3rem"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (entry of mileageHistory; track entry.id) {
+            <tr>
+              <td style="color:var(--surface-muted)">{{ entry.date | date:'dd.MM.yyyy' }}</td>
+              <td class="text-right font-semibold">{{ entry.mileage | number:'1.0-0':'de' }} km</td>
+              <td>
+                <span class="text-xs px-2 py-0.5 rounded-full"
+                      style="background:var(--surface-hover); color:var(--surface-muted)">
+                  {{ mileageSourceLabel[entry.source] }}
+                </span>
+              </td>
+              <td style="color:var(--surface-muted)">{{ entry.notes ?? '–' }}</td>
+              <td>
+                <p-button icon="fa-solid fa-trash" [text]="true" severity="danger" size="small"
+                          (click)="deleteMileageEntry(entry.id)" />
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <div class="empty-state py-8">
+        <i class="fa-solid fa-gauge text-3xl" style="color:var(--surface-muted)"></i>
+        <p class="text-sm">Noch keine Kilometerstände erfasst</p>
+      </div>
+    }
+  </div>
+
+  <!-- Reifenhistorie -->
+  <div class="card mb-6 p-0">
+    <div class="card-header">
+      <div>
+        <h2 class="section-title mb-0">Reifenhistorie</h2>
+        <p class="text-xs mt-0.5" style="color:var(--surface-muted)">{{ tireHistory.length }} Einträge</p>
+      </div>
+      <p-button icon="fa-solid fa-plus" label="Reifenwechsel" size="small" [text]="true"
+                (click)="showTireForm.set(!showTireForm())" />
+    </div>
+
+    @if (showTireForm()) {
+      <div class="px-4 pb-4 border-b" style="border-color:var(--surface-border)">
+        <form [formGroup]="tireForm" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="form-label">Datum</label>
+            <input type="date" class="form-input" formControlName="changeDate">
+          </div>
+          <div>
+            <label class="form-label">Kilometerstand</label>
+            <input type="number" class="form-input" formControlName="mileage" placeholder="285000">
+          </div>
+          <div>
+            <label class="form-label">Achse</label>
+            <select class="form-select" formControlName="axle">
+              <option value="">– Auswählen –</option>
+              @for (opt of axleOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Saison</label>
+            <select class="form-select" formControlName="season">
+              <option value="">– Auswählen –</option>
+              @for (opt of seasonOptions; track opt.value) {
+                <option [value]="opt.value">{{ opt.label }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Reifengröße</label>
+            <input type="text" class="form-input" formControlName="tireSize" placeholder="315/70 R22.5">
+          </div>
+          <div>
+            <label class="form-label">Hersteller</label>
+            <input type="text" class="form-input" formControlName="manufacturer" placeholder="Continental">
+          </div>
+          <div>
+            <label class="form-label">DOT</label>
+            <input type="text" class="form-input" formControlName="dot" placeholder="2024 KW12">
+          </div>
+          <div>
+            <label class="form-label">Profiltiefe (mm)</label>
+            <input type="number" class="form-input" formControlName="profileDepth" placeholder="8.5" step="0.1">
+          </div>
+          <div class="col-span-2">
+            <label class="form-label">Notizen</label>
+            <input type="text" class="form-input" formControlName="notes" placeholder="Besonderheiten">
+          </div>
+          <div class="col-span-2 flex justify-end gap-2">
+            <p-button icon="fa-solid fa-xmark" label="Abbrechen" size="small" severity="secondary"
+                      [outlined]="true" (click)="showTireForm.set(false)" />
+            <p-button icon="fa-solid fa-check" label="Speichern" size="small"
+                      [disabled]="savingTire()" (click)="saveTireEntry()" />
+          </div>
+        </form>
+      </div>
+    }
+
+    @if (tireHistory.length > 0) {
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Datum</th>
+            <th>Achse</th>
+            <th>Typ</th>
+            <th>Größe</th>
+            <th>Hersteller</th>
+            <th>Profil</th>
+            <th class="text-right">km</th>
+            <th style="width:3rem"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (t of tireHistory; track t.id) {
+            <tr>
+              <td style="color:var(--surface-muted)">{{ t.changeDate | date:'dd.MM.yyyy' }}</td>
+              <td>{{ t.axle ? axleLabel[t.axle] : '–' }}</td>
+              <td>
+                @if (t.season) {
+                  <span class="text-xs px-2 py-0.5 rounded-full"
+                        [style]="t.season === 'WINTER' ? 'background:#dbeafe; color:#1d4ed8' : t.season === 'SUMMER' ? 'background:#fef9c3; color:#92400e' : 'background:#f0fdf4; color:#166534'">
+                    {{ seasonLabel[t.season] }}
+                  </span>
+                } @else { – }
+              </td>
+              <td class="font-mono text-sm">{{ t.tireSize ?? '–' }}</td>
+              <td>{{ t.manufacturer ?? '–' }}</td>
+              <td>{{ t.profileDepth ? (t.profileDepth + ' mm') : '–' }}</td>
+              <td class="text-right">{{ t.mileage ? (t.mileage | number:'1.0-0':'de') : '–' }}</td>
+              <td>
+                <p-button icon="fa-solid fa-trash" [text]="true" severity="danger" size="small"
+                          (click)="deleteTireEntry(t.id)" />
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    } @else {
+      <div class="empty-state py-8">
+        <i class="fa-solid fa-tire text-3xl" style="color:var(--surface-muted)"></i>
+        <p class="text-sm">Noch keine Reifenwechsel erfasst</p>
+      </div>
+    }
+  </div>
+
+  } <!-- Ende TAB: Übersicht -->
+
+  <!-- TAB: Fahrzeughistorie -->
+  @if (activeTab() === 'history') {
+  <div class="card p-0">
+    <div class="card-header">
+      <div>
+        <h2 class="section-title mb-0">Fahrzeughistorie</h2>
+        <p class="text-xs mt-0.5" style="color:var(--surface-muted)">Alle Ereignisse chronologisch</p>
+      </div>
+      <span class="badge-gray">{{ timeline.length }} Einträge</span>
+    </div>
+
+    @if (timeline.length > 0) {
+      <div class="px-4 py-2">
+        @for (event of timeline; track $index) {
+          <div class="flex gap-4 py-3"
+               [style]="'border-bottom: 1px solid var(--surface-border)'"
+               [class.cursor-pointer]="event.invoiceId"
+               (click)="event.invoiceId && goToInvoice({id: event.invoiceId})">
+
+            <!-- Icon -->
+            <div class="flex flex-col items-center shrink-0" style="width:2rem">
+              <div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs shrink-0"
+                   [style]="'background:' + (event.severity === 'warning' ? '#f59e0b' : timelineColors[event.type] ?? '#6b7280')">
+                <i class="fa-solid {{ timelineIcons[event.type] ?? 'fa-circle' }}"></i>
+              </div>
+            </div>
+
+            <!-- Inhalt -->
+            <div class="flex-1 min-w-0 py-0.5">
+              <div class="flex items-start justify-between gap-2">
+                <div class="flex-1 min-w-0">
+                  <span class="text-sm font-medium" style="color:var(--surface-text)">{{ event.description }}</span>
+                  @if (event.severity === 'warning') {
+                    <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xs ml-2"></i>
+                  }
+                  @if (event.detail) {
+                    <div class="text-xs mt-0.5" style="color:var(--surface-muted)">{{ event.detail }}</div>
+                  }
+                </div>
+                <div class="text-xs shrink-0 text-right" style="color:var(--surface-muted)">
+                  @if (event.date) {
+                    {{ event.date | date:'dd.MM.yyyy' }}
+                  } @else {
+                    Kein Datum
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        }
+      </div>
+    } @else {
+      <div class="empty-state py-12">
+        <i class="fa-solid fa-clock-rotate-left text-4xl" style="color:var(--surface-muted)"></i>
+        <p class="text-sm">Noch keine Ereignisse vorhanden</p>
+        <p class="text-xs mt-1" style="color:var(--surface-muted)">Rechnungen hochladen um die Historie zu befüllen</p>
+      </div>
+    }
+  </div>
+  } <!-- Ende TAB: Fahrzeughistorie -->
+
+  <!-- TAB: Rechnungen -->
+  @if (activeTab() === 'invoices') {
+  <div class="card p-0">
     <div class="card-header">
       <h2 class="section-title mb-0">Rechnungen</h2>
-      <span class="badge-gray">{{ invoices().length }}</span>
+      <span class="badge-gray">{{ invoiceData.length }}</span>
     </div>
-    <table class="data-table w-full">
+    <table class="data-table">
       <thead>
         <tr>
-          <th>Datum</th><th>Werkstatt</th><th>Reparatur</th>
-          <th class="text-right">Betrag</th><th>Status</th>
+          <th style="width:9rem">Datum</th>
+          <th>Werkstatt</th>
+          <th>Reparatur</th>
+          <th class="text-right" style="width:9rem">Betrag</th>
+          <th style="width:7rem">Status</th>
         </tr>
       </thead>
       <tbody>
-        @for (inv of invoices(); track inv.id) {
+        @for (inv of invoiceData; track inv.id) {
           <tr (click)="goToInvoice(inv)" [class.anomaly-row]="inv.hasAnomalies">
             <td class="whitespace-nowrap" style="color:var(--surface-muted)">{{ inv.invoiceDate | date:'dd.MM.yyyy' }}</td>
             <td class="font-medium">{{ inv.workshopName ?? '–' }}</td>
-            <td class="max-w-xs truncate" style="color:var(--surface-muted)">{{ inv.repairContext ?? '–' }}</td>
+            <td style="color:var(--surface-muted); max-width:20rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">
+              {{ inv.repairContext ?? '–' }}
+            </td>
             <td class="text-right font-semibold">{{ inv.totalAmount | currency:'EUR':'symbol':'1.2-2':'de' }}</td>
             <td>
               @if (inv.hasAnomalies) {
@@ -119,15 +406,19 @@
               }
             </td>
           </tr>
+        } @empty {
+          <tr>
+            <td colspan="5">
+              <div class="empty-state py-10">
+                <i class="fa-solid fa-receipt text-4xl" style="color:var(--surface-muted)"></i>
+                <p class="text-sm">Noch keine Rechnungen für dieses Fahrzeug</p>
+              </div>
+            </td>
+          </tr>
         }
       </tbody>
     </table>
-    @if (invoices().length === 0) {
-      <div class="empty-state py-10">
-        <i class="fa-solid fa-receipt text-4xl" style="color:var(--surface-muted)"></i>
-        <p class="text-sm">Noch keine Rechnungen für dieses Fahrzeug</p>
-      </div>
-    }
   </div>
+  } <!-- Ende TAB: Rechnungen -->
 
 }

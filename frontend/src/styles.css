@@ -425,3 +425,120 @@ body {
     color: var(--surface-muted);
   }
 }
+
+/* ── PrimeNG 21 p-table overrides (außerhalb @layer für höhere Spezifität) ── */
+
+/* Kein border-radius im Container — der liegt schon auf .card */
+.p-datatable .p-datatable-table-container {
+  border-radius: 0;
+}
+
+/* ── Header ─────────────────────────────────────────────────── */
+.p-datatable-thead > tr > th {
+  padding: 0.625rem 1rem;
+  font-size: 0.6875rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--surface-muted) !important;
+  background: var(--surface-hover) !important;
+  border-bottom: 1px solid var(--surface-border) !important;
+  border-top: none !important;
+  white-space: nowrap;
+}
+
+/* Sortierbare Spalten */
+.p-datatable-thead > tr > th.p-datatable-sortable-column:hover {
+  background: var(--surface-border) !important;
+  color: var(--surface-text) !important;
+}
+.p-datatable-thead > tr > th.p-datatable-column-sorted {
+  background: var(--surface-hover) !important;
+  color: #3b82f6 !important;
+}
+.p-datatable-thead > tr > th.p-datatable-column-sorted .p-datatable-sort-icon {
+  color: #3b82f6 !important;
+}
+.p-datatable-sort-icon {
+  font-size: 0.65rem !important;
+  color: var(--surface-muted);
+}
+
+/* sm variant — Header */
+.p-datatable-sm .p-datatable-thead > tr > th {
+  padding: 0.5rem 0.875rem;
+}
+
+/* ── Body ───────────────────────────────────────────────────── */
+.p-datatable-tbody > tr > td {
+  padding: 0.8125rem 1rem;
+  font-size: 0.875rem;
+  color: var(--surface-text) !important;
+  background: var(--surface-card) !important;
+  border: none !important;
+  border-bottom: 1px solid var(--surface-border) !important;
+}
+
+.p-datatable-tbody > tr:last-child > td {
+  border-bottom: none !important;
+}
+
+/* Hover (funktioniert nur wenn p-datatable-hoverable gesetzt) */
+.p-datatable-hoverable .p-datatable-tbody > tr:not(.p-datatable-empty-message):hover > td {
+  background: var(--surface-hover) !important;
+}
+
+/* sm variant — Body */
+.p-datatable-sm .p-datatable-tbody > tr > td {
+  padding: 0.6875rem 0.875rem;
+}
+
+/* ── Anomalie-Zeilen ────────────────────────────────────────── */
+.p-datatable-tbody > tr.anomaly-row > td {
+  background: rgb(254 243 199 / 0.35) !important;
+}
+.dark .p-datatable-tbody > tr.anomaly-row > td {
+  background: rgb(120 53 15 / 0.2) !important;
+}
+.p-datatable-hoverable .p-datatable-tbody > tr.anomaly-row:hover > td {
+  background: rgb(254 243 199 / 0.6) !important;
+}
+.dark .p-datatable-hoverable .p-datatable-tbody > tr.anomaly-row:hover > td {
+  background: rgb(120 53 15 / 0.35) !important;
+}
+
+/* ── Empty Message ──────────────────────────────────────────── */
+.p-datatable-empty-message > td {
+  border-bottom: none !important;
+  background: var(--surface-card) !important;
+  padding: 0 !important;
+}
+
+/* ── Paginator ──────────────────────────────────────────────── */
+.p-datatable .p-datatable-paginator-bottom {
+  background: var(--surface-card) !important;
+  border-top: 1px solid var(--surface-border) !important;
+  border-radius: 0 0 0.875rem 0.875rem;
+  padding: 0.5rem 1rem;
+}
+.p-datatable .p-datatable-paginator-bottom .p-paginator-page,
+.p-datatable .p-datatable-paginator-bottom .p-paginator-first,
+.p-datatable .p-datatable-paginator-bottom .p-paginator-last,
+.p-datatable .p-datatable-paginator-bottom .p-paginator-prev,
+.p-datatable .p-datatable-paginator-bottom .p-paginator-next {
+  color: var(--surface-muted);
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  min-width: 2rem;
+  height: 2rem;
+}
+.p-datatable .p-datatable-paginator-bottom .p-paginator-page:hover,
+.p-datatable .p-datatable-paginator-bottom .p-paginator-prev:hover,
+.p-datatable .p-datatable-paginator-bottom .p-paginator-next:hover {
+  background: var(--surface-hover) !important;
+  color: var(--surface-text) !important;
+}
+.p-datatable .p-datatable-paginator-bottom .p-paginator-page.p-paginator-page-selected {
+  background: #2563eb !important;
+  color: #fff !important;
+}

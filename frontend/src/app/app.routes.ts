@@ -30,5 +30,9 @@ export const routes: Routes = [
     path: 'upload',
     loadComponent: () => import('./upload/upload.component').then(m => m.UploadComponent),
   },
+  {
+    path: 'analytics',
+    loadComponent: () => import('./analytics/analytics.component').then(m => m.AnalyticsComponent),
+  },
   { path: '**', redirectTo: 'dashboard' },
 ];

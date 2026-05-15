@@ -1,48 +1,38 @@
-import { Component, inject, signal, computed, resource } from '@angular/core';
+import { Component, inject, signal, computed } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { DatePipe, CurrencyPipe } from '@angular/common';
-import { firstValueFrom } from 'rxjs';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { map, switchMap } from 'rxjs';
 import { ButtonModule } from 'primeng/button';
 import { TagModule } from 'primeng/tag';
 import { TooltipModule } from 'primeng/tooltip';
+import { TableModule } from 'primeng/table';
 import { PdfViewerModule } from 'ng2-pdf-viewer';
 import { ApiService } from '../../core/services/api.service';
 
 @Component({
   standalone: true,
+
   selector: 'app-invoice-detail',
   templateUrl: './invoice-detail.component.html',
-  imports: [DatePipe, CurrencyPipe, ButtonModule, TagModule, TooltipModule, PdfViewerModule],
+  imports: [DatePipe, CurrencyPipe, ButtonModule, TagModule, TooltipModule, TableModule, PdfViewerModule],
 })
 export class InvoiceDetailComponent {
   readonly router = inject(Router);
   private  route  = inject(ActivatedRoute);
   private  api    = inject(ApiService);
 
-  private id = this.route.snapshot.paramMap.get('id')!;
+  // Dynamisch auf Routen-Änderungen reagieren (kein snapshot!)
+  invoice = toSignal(
+    this.route.paramMap.pipe(
+      map(p => p.get('id')!),
+      switchMap(id => this.api.getInvoice(id))
+    )
+  );
 
-  private invoiceRes = resource({ loader: () => firstValueFrom(this.api.getInvoice(this.id)) });
-
-  invoice  = computed(() => this.invoiceRes.value());
-  loading  = computed(() => this.invoiceRes.isLoading());
-  showPdf  = signal(false);
-  pdfUrl   = this.api.getPdfUrl(this.id);
-
-  anomalies           = computed(() => this.invoice()?.positions?.filter(p => p.isAnomaly) ?? []);
-  inspectionPositions = computed(() => this.invoice()?.inspections ?? []);
-  supplies            = computed(() => this.invoice()?.operatingSupplies ?? []);
-
-  detailRows = computed(() => {
-    const inv = this.invoice();
-    if (!inv) return [];
-    return [
-      { label: 'Werkstatt',     value: inv.workshopName ?? '–' },
-      { label: 'Rechnungs-Nr.', value: inv.invoiceNumber ?? '–' },
-      { label: 'Datum',         value: new Date(inv.invoiceDate).toLocaleDateString('de-DE') },
-      { label: 'Kennzeichen',   value: inv.vehicle?.licensePlate ?? 'Lager' },
-      { label: 'Reparatur',     value: inv.repairContext ?? '–' },
-    ];
-  });
+  loading = computed(() => this.invoice() === undefined);
+  showPdf = signal(false);
+  pdfUrl  = computed(() => this.invoice() ? this.api.getPdfUrl(this.invoice()!.id) : '');
 
   readonly categoryLabels: Record<string, string> = {
     REPAIR: 'Reparatur', INSPECTION: 'Prüfung', BETRIEBSMITTEL: 'Betriebsmittel',

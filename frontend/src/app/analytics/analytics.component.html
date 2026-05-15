@@ -1,0 +1,175 @@
+<div class="space-y-6">
+
+  <div>
+    <h1 class="page-title">Auswertungen</h1>
+    <p class="page-subtitle">Werkstattvergleich, Fahrzeugkosten und Kostentrend</p>
+  </div>
+
+  @if (loading) {
+    <div class="flex justify-center py-20"><div class="spinner"></div></div>
+  }
+
+  @if (!loading) {
+
+    <!-- Gesamtkosten-Karte -->
+    <div class="grid grid-cols-3 gap-4">
+      <div class="stat-card col-span-1">
+        <div class="flex items-center justify-between mb-3">
+          <span class="section-title">Gesamtkosten</span>
+          <span class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-sm">
+            <i class="fa-solid fa-euro-sign"></i>
+          </span>
+        </div>
+        <div class="stat-card-value text-emerald-600 dark:text-emerald-400 text-2xl">
+          {{ totalCostAll | currency:'EUR':'symbol':'1.0-0':'de' }}
+        </div>
+        <div class="stat-card-label">{{ vehicleCosts.length }} Fahrzeuge · {{ workshops.length }} Werkstätten</div>
+      </div>
+
+      <div class="stat-card col-span-1">
+        <div class="flex items-center justify-between mb-3">
+          <span class="section-title">Teuerste Werkstatt</span>
+          <span class="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center text-sm">
+            <i class="fa-solid fa-building"></i>
+          </span>
+        </div>
+        @if (workshops[0]) {
+          <div class="stat-card-value text-blue-600 dark:text-blue-400 text-lg truncate">{{ workshops[0].workshopName }}</div>
+          <div class="stat-card-label">{{ workshops[0].totalAmount | currency:'EUR':'symbol':'1.0-0':'de' }} gesamt</div>
+        }
+      </div>
+
+      <div class="stat-card col-span-1">
+        <div class="flex items-center justify-between mb-3">
+          <span class="section-title">Teuerster LKW</span>
+          <span class="w-9 h-9 rounded-xl bg-violet-500/10 text-violet-600 flex items-center justify-center text-sm">
+            <i class="fa-solid fa-truck"></i>
+          </span>
+        </div>
+        @if (vehicleCosts[0]) {
+          <div class="stat-card-value text-violet-600 dark:text-violet-400 text-2xl">{{ vehicleCosts[0].licensePlate }}</div>
+          <div class="stat-card-label">{{ vehicleCosts[0].totalAmount | currency:'EUR':'symbol':'1.0-0':'de' }} gesamt</div>
+        }
+      </div>
+    </div>
+
+    <!-- Werkstattvergleich -->
+    <div class="card">
+      <h2 class="section-title mb-5">Werkstattvergleich — Gesamtkosten</h2>
+      <div class="space-y-3">
+        @for (w of workshops; track w.workshopName) {
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class="text-sm font-medium truncate" style="color:var(--surface-text); max-width:20rem">{{ w.workshopName }}</span>
+                @if (w.anomalyRate > 0) {
+                  <span class="text-xs px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-400 shrink-0">
+                    {{ w.anomalyRate }}% Anomalien
+                  </span>
+                }
+              </div>
+              <div class="text-right shrink-0 ml-4">
+                <span class="text-sm font-semibold" style="color:var(--surface-text)">{{ w.totalAmount | currency:'EUR':'symbol':'1.0-0':'de' }}</span>
+                <span class="text-xs ml-2" style="color:var(--surface-muted)">{{ w.invoiceCount }} Rech. · Ø {{ w.avgAmount | currency:'EUR':'symbol':'1.0-0':'de' }}</span>
+              </div>
+            </div>
+            <div class="w-full rounded-full h-2" style="background:var(--surface-border)">
+              <div class="h-2 rounded-full transition-all duration-500"
+                   [style]="'width:' + barWidth(w.totalAmount, maxWorkshopAmount) + '; background: ' + (w.anomalyRate > 20 ? '#f59e0b' : '#3b82f6')">
+              </div>
+            </div>
+          </div>
+        } @empty {
+          <div class="empty-state py-8">
+            <i class="fa-solid fa-building text-3xl" style="color:var(--surface-muted)"></i>
+            <p class="text-sm">Noch keine Daten</p>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Kosten je Fahrzeug -->
+    <div class="card p-0">
+      <div class="card-header">
+        <h2 class="section-title mb-0">Kosten je Fahrzeug</h2>
+        <span class="badge-gray">{{ vehicleCosts.length }}</span>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Kennzeichen</th>
+            <th class="text-right">Gesamtkosten</th>
+            <th class="text-right">Rechnungen</th>
+            <th class="text-right">Ø pro Rechnung</th>
+            <th style="width:10rem">Anteil</th>
+            <th style="width:3rem"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (v of vehicleCosts; track v.vehicleId) {
+            <tr>
+              <td class="font-semibold">{{ v.licensePlate }}</td>
+              <td class="text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                {{ v.totalAmount | currency:'EUR':'symbol':'1.0-0':'de' }}
+              </td>
+              <td class="text-right" style="color:var(--surface-muted)">{{ v.invoiceCount }}</td>
+              <td class="text-right" style="color:var(--surface-muted)">
+                {{ (v.totalAmount / v.invoiceCount) | currency:'EUR':'symbol':'1.0-0':'de' }}
+              </td>
+              <td>
+                <div class="w-full rounded-full h-1.5" style="background:var(--surface-border)">
+                  <div class="h-1.5 rounded-full" style="background:#10b981"
+                       [style.width]="barWidth(v.totalAmount, maxVehicleAmount)">
+                  </div>
+                </div>
+              </td>
+              <td>
+                <p-button icon="fa-solid fa-arrow-right" [text]="true" size="small"
+                          [routerLink]="['/vehicles', v.vehicleId]" />
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="6">
+                <div class="empty-state py-8">
+                  <i class="fa-solid fa-truck text-3xl" style="color:var(--surface-muted)"></i>
+                  <p class="text-sm">Noch keine Fahrzeugdaten</p>
+                </div>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Monatlicher Kostenverlauf -->
+    <div class="card">
+      <h2 class="section-title mb-5">Monatlicher Kostenverlauf</h2>
+      @if (monthlyCosts.length > 0) {
+        <div class="flex items-end gap-1" style="height:10rem">
+          @for (m of monthlyCosts; track m.month) {
+            <div class="flex-1 flex flex-col items-center gap-1 group relative">
+              <div class="absolute -top-7 left-1/2 -translate-x-1/2 text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10"
+                   style="background:var(--surface-text); color:var(--surface-card)">
+                {{ m.totalAmount | currency:'EUR':'symbol':'1.0-0':'de' }}
+              </div>
+              <div class="w-full rounded-t-sm transition-all duration-300 hover:opacity-80"
+                   style="background:#3b82f6; min-height:2px"
+                   [style.height]="barWidth(m.totalAmount, maxMonthlyAmount)">
+              </div>
+              <div class="text-xs truncate w-full text-center" style="color:var(--surface-muted); font-size:9px">
+                {{ formatMonth(m.month) }}
+              </div>
+            </div>
+          }
+        </div>
+      } @else {
+        <div class="empty-state py-8">
+          <i class="fa-solid fa-chart-bar text-3xl" style="color:var(--surface-muted)"></i>
+          <p class="text-sm">Noch keine Monatsdaten</p>
+        </div>
+      }
+    </div>
+
+  }
+</div>
