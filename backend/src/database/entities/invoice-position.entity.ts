@@ -11,7 +11,7 @@ export enum PositionCategory {
   OTHER = 'OTHER',
 }
 
-@Entity('invoice_positions')
+@Entity('werkstatt_invoice_positions')
 export class InvoicePosition {
   @PrimaryGeneratedColumn('uuid')
   id: string;

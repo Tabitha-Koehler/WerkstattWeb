@@ -51,14 +51,30 @@ export interface AnalysisResult {
 @Injectable()
 export class AiAnalysisService {
   private readonly logger = new Logger(AiAnalysisService.name);
+
+  // Groq (Produktion / Web)
+  private readonly groqApiKey: string;
+  private readonly groqModel: string;
+  private readonly groqEnabled: boolean;
+
+  // Ollama (legacy / lokal)
   private readonly ollamaUrl: string;
-  private readonly model: string;
+  private readonly ollamaModel: string;
   private readonly ollamaEnabled: boolean;
 
   constructor(private readonly configService: ConfigService) {
-    this.ollamaUrl = this.configService.get<string>('ollama.url') || 'http://localhost:11434';
-    this.model = this.configService.get<string>('ollama.model') || 'qwen2.5:7b';
-    this.ollamaEnabled = this.configService.get<string>('OLLAMA_ENABLED') !== 'false';
+    this.groqApiKey   = this.configService.get<string>('groq.apiKey')  || '';
+    this.groqModel    = this.configService.get<string>('groq.model')   || 'llama-3.1-70b-versatile';
+    this.groqEnabled  = !!this.groqApiKey && this.configService.get<boolean>('groq.enabled') !== false;
+
+    this.ollamaUrl    = this.configService.get<string>('ollama.url')   || 'http://localhost:11434';
+    this.ollamaModel  = this.configService.get<string>('ollama.model') || 'qwen2.5:7b';
+    this.ollamaEnabled = this.configService.get<boolean>('ollama.enabled') === true;
+  }
+
+  /** true wenn irgendeine KI verfügbar ist */
+  private get aiAvailable(): boolean {
+    return this.groqEnabled || this.ollamaEnabled;
   }
 
   // ── Haupt-Analyse: Regelbasierte Extraktion + KI-Betrugsaudit ────────────
@@ -67,8 +83,8 @@ export class AiAnalysisService {
     // Schritt 1: Immer regelbasiert extrahieren (zuverlässig für Strukturdaten)
     const result = this.ruleBasedFallback(rawText, filename);
 
-    // Schritt 2: KI-Betrugsaudit, falls Ollama verfügbar und Positionen vorhanden
-    if (!skipAIAudit && this.ollamaEnabled && result.positions.length > 0) {
+    // Schritt 2: KI-Betrugsaudit, falls KI verfügbar und Positionen vorhanden
+    if (!skipAIAudit && this.aiAvailable && result.positions.length > 0) {
       const aiAnomalies = await this.checkFraudWithAI(
         result.repairContext,
         result.positions,
@@ -95,7 +111,7 @@ export class AiAnalysisService {
     positions: InvoicePosition[],
     mileage: number | null,
   ): Promise<AnomalyResult[]> {
-    if (!this.ollamaEnabled || positions.length === 0) return [];
+    if (!this.aiAvailable || positions.length === 0) return [];
 
     const posText = positions
       .map(p =>
@@ -124,10 +140,12 @@ Prüfe gezielt:
 5. Doppelte oder nahezu identische Positionen?`;
 
     try {
-      const responseText = await this.callOllama(prompt);
+      const responseText = this.groqEnabled
+        ? await this.callGroq(prompt)
+        : await this.callOllama(prompt);
       const parsed = this.parseAnomalyJson(responseText);
       this.logger.log(
-        `KI-Betrugsaudit: ${parsed.length} zusätzliche Anomalien erkannt`,
+        `KI-Betrugsaudit (${this.groqEnabled ? 'Groq' : 'Ollama'}): ${parsed.length} zusätzliche Anomalien erkannt`,
       );
       return parsed.map(a => ({
         positionDescription: a.position || '',
@@ -154,12 +172,62 @@ Prüfe gezielt:
     }
   }
 
+  // ── Groq API (OpenAI-kompatibel, für Produktion) ──────────────────────────
+  private callGroq(prompt: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const body = JSON.stringify({
+        model: this.groqModel,
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.1,
+        max_tokens: 4096,
+      });
+
+      const options = {
+        hostname: 'api.groq.com',
+        port: 443,
+        path: '/openai/v1/chat/completions',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.groqApiKey}`,
+          'Content-Length': Buffer.byteLength(body),
+        },
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', (chunk) => (data += chunk));
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.error) {
+              reject(new Error(`Groq API Fehler: ${parsed.error.message}`));
+              return;
+            }
+            resolve(parsed.choices?.[0]?.message?.content || '');
+          } catch {
+            reject(new Error('Ungültige Antwort von Groq'));
+          }
+        });
+      });
+
+      req.on('error', (e) => reject(new Error(`Groq nicht erreichbar: ${e.message}`)));
+      req.setTimeout(30000, () => {
+        req.destroy();
+        reject(new Error('Groq Timeout (30s)'));
+      });
+      req.write(body);
+      req.end();
+    });
+  }
+
+  // ── Ollama (legacy / lokal) ────────────────────────────────────────────────
   private callOllama(prompt: string): Promise<string> {
     return new Promise((resolve, reject) => {
       const url = new URL('/api/generate', this.ollamaUrl);
       const isHttps = url.protocol === 'https:';
       const body = JSON.stringify({
-        model: this.model,
+        model: this.ollamaModel,
         prompt,
         stream: false,
         options: { temperature: 0.1, num_predict: 4096 },

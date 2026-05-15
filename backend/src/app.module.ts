@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
+import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import configuration from './config/configuration';
 import { VehiclesModule } from './vehicles/vehicles.module';
 import { InvoicesModule } from './invoices/invoices.module';
@@ -26,17 +26,37 @@ import { MileageHistory } from './database/entities/mileage-history.entity';
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get('database.host'),
-        port: config.get<number>('database.port'),
-        username: config.get('database.username'),
-        password: config.get('database.password'),
-        database: config.get('database.name'),
-        entities: [Vehicle, Invoice, InvoicePosition, Inspection, OperatingSupply, TireHistory, MileageHistory],
-        synchronize: true,
-        logging: false,
-      }),
+      useFactory: (config: ConfigService): TypeOrmModuleOptions => {
+        const dbUrl = config.get<string>('database.url');
+
+        const base: Partial<TypeOrmModuleOptions> = {
+          type: 'postgres',
+          entities: [Vehicle, Invoice, InvoicePosition, Inspection, OperatingSupply, TireHistory, MileageHistory],
+          synchronize: true,
+          logging: false,
+        };
+
+        if (dbUrl) {
+          // Supabase / Railway: DATABASE_URL mit SSL
+          return {
+            ...base,
+            type: 'postgres',
+            url: dbUrl,
+            ssl: { rejectUnauthorized: false },
+          } as TypeOrmModuleOptions;
+        }
+
+        // Lokal: einzelne Credentials
+        return {
+          ...base,
+          type: 'postgres',
+          host: config.get('database.host'),
+          port: config.get<number>('database.port'),
+          username: config.get('database.username'),
+          password: config.get('database.password'),
+          database: config.get('database.name'),
+        } as TypeOrmModuleOptions;
+      },
     }),
     VehiclesModule,
     InvoicesModule,

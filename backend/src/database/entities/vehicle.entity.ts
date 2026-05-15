@@ -4,7 +4,7 @@ import { Inspection } from './inspection.entity';
 import { TireHistory } from './tire-history.entity';
 import { MileageHistory } from './mileage-history.entity';
 
-@Entity('vehicles')
+@Entity('werkstatt_vehicles')
 export class Vehicle {
   @PrimaryGeneratedColumn('uuid')
   id: string;

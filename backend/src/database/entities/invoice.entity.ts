@@ -13,7 +13,7 @@ import { InvoicePosition } from './invoice-position.entity';
 import { Inspection } from './inspection.entity';
 import { OperatingSupply } from './operating-supply.entity';
 
-@Entity('invoices')
+@Entity('werkstatt_invoices')
 export class Invoice {
   @PrimaryGeneratedColumn('uuid')
   id: string;

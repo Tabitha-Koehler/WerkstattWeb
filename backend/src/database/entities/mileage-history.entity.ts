@@ -10,7 +10,7 @@ export enum MileageSource {
   INSPECTION = 'INSPECTION',
 }
 
-@Entity('mileage_history')
+@Entity('werkstatt_mileage_history')
 export class MileageHistory {
   @PrimaryGeneratedColumn('uuid')
   id: string;

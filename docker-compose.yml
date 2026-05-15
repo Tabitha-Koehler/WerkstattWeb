@@ -31,7 +31,7 @@ services:
       DB_NAME: werkstattweb
       OLLAMA_URL: http://host.docker.internal:11434
       OLLAMA_MODEL: qwen2.5:7b
-      OLLAMA_ENABLED: "true"
+      OLLAMA_ENABLED: "false"
       WATCH_FOLDER: /data/rechnungen_pdf
       PORT: "3000"
     ports:

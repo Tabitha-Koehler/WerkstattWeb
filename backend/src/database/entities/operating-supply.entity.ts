@@ -9,7 +9,7 @@ import {
 import { Vehicle } from './vehicle.entity';
 import { Invoice } from './invoice.entity';
 
-@Entity('operating_supplies')
+@Entity('werkstatt_operating_supplies')
 export class OperatingSupply {
   @PrimaryGeneratedColumn('uuid')
   id: string;

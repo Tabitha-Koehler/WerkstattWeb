@@ -20,7 +20,7 @@ export enum TireSeason {
   ALL_SEASON = 'ALL_SEASON',
 }
 
-@Entity('tire_history')
+@Entity('werkstatt_tire_history')
 export class TireHistory {
   @PrimaryGeneratedColumn('uuid')
   id: string;

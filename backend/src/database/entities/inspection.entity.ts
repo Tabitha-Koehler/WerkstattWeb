@@ -15,7 +15,7 @@ export enum InspectionType {
   AU = 'AU',
 }
 
-@Entity('inspections')
+@Entity('werkstatt_inspections')
 export class Inspection {
   @PrimaryGeneratedColumn('uuid')
   id: string;

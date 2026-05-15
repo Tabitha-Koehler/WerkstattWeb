@@ -18,10 +18,19 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
 
+  // CORS: lokale Entwicklung + Produktions-URLs aus Env
+  const allowedOrigins: string[] = [
+    'http://localhost:4200',
+    'http://127.0.0.1:4200',
+  ];
+  if (process.env.FRONTEND_URL) allowedOrigins.push(process.env.FRONTEND_URL);
+  if (process.env.CARGO_DISPO_URL) allowedOrigins.push(process.env.CARGO_DISPO_URL);
+
   app.enableCors({
-    origin: ['http://localhost:4200', 'http://127.0.0.1:4200'],
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    origin: allowedOrigins,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
   });
 
   app.setGlobalPrefix('api');
