@@ -82,7 +82,10 @@ export class InvoicesService {
       // repairContext: AI-Ergebnis wenn sinnvoll, sonst aus ZUGFeRD-Positionen ableiten
       const aiContext = analysis.repairContext;
       const contextIsGarbage = !aiContext || aiContext.includes('€') || aiContext.includes('Endbetrag')
-        || aiContext.includes('@') || aiContext.includes('$') || aiContext.length < 5;
+        || aiContext.includes('@') || aiContext.includes('$') || aiContext.length < 5
+        || /Zahlbar|ohne Abzug|nachziehen|Bezahlcode|Bequem überweisen|Regelbasiert extrahiert|^snummer|^nummer/i.test(aiContext)
+        || /Geschäftsführer|Handelsregister|www\.|web:|email:/i.test(aiContext)
+        || /^(?:Cargo\s|Marker\s|Spedition\s|Firma\b)/i.test(aiContext);
       if (contextIsGarbage) {
         // Aus ZUGFeRD-Positionen oder KI-Positionen ableiten
         const sourceItems = zugferd?.lineItems?.length
@@ -546,6 +549,37 @@ export class InvoicesService {
         // Invoice-Felder aktualisieren
         const updateData: Partial<Invoice> = { hasAnomalies: invoiceHasAnomaly };
         if (analysis.summary && !inv.repairContext) updateData.aiSummary = analysis.summary;
+
+        // repairContext reparieren wenn Fußzeilen-Text oder Adresse eingetragen wurde
+        const isContextGarbage = (ctx: string) => !ctx || ctx.includes('€') || ctx.length < 5
+          || /Zahlbar|ohne Abzug|nachziehen|Bezahlcode|Regelbasiert|snummer/i.test(ctx)
+          || /Geschäftsführer|Handelsregister|Sparkasse|Volksbank|www\.|web:|email:|IBAN|BIC/i.test(ctx)
+          || /^(?:Cargo\s|Marker\s|Spedition\s|Firma\b|\d{5}\s)/i.test(ctx)
+          || /^[A-Z][a-z]+[A-Z]/.test(ctx);  // CamelCase ohne Leerzeichen = zusammengeklebt
+
+        const currentCtx = inv.repairContext ?? '';
+        if (isContextGarbage(currentCtx) && inv.pdfPath && fs.existsSync(inv.pdfPath)) {
+          // Für ZUGFeRD-Rechnungen: Positionstexte direkt aus XML
+          try {
+            const zugferd = await this.pdfParser.extractZugferdData(inv.pdfPath);
+            if (zugferd?.lineItems?.length) {
+              const ctx = zugferd.lineItems
+                .filter(li => li.description && !li.description.toLowerCase().includes('rabatt'))
+                .slice(0, 3)
+                .map(li => li.description.trim())
+                .filter(d => d.length > 3 && !d.includes('€') && !d.includes('@'))
+                .join(', ');
+              if (ctx) updateData.repairContext = ctx;
+            }
+          } catch { /* ignore */ }
+
+          // Noch kein Kontext: regelbasierter Fallback
+          if (!updateData.repairContext) {
+            const newCtx = analysis.repairContext ?? '';
+            if (!isContextGarbage(newCtx)) updateData.repairContext = newCtx;
+          }
+        }
+
         await this.invoiceRepo.update(inv.id, updateData);
 
         if (invoiceHasAnomaly) this.reprocessStatus.anomaliesFound++;

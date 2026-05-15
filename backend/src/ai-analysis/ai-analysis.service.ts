@@ -305,8 +305,8 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
 
     // ── Reparaturkontext ───────────────────────────────────────────────────
     let repairContext = '';
-    // Priorität 1: explizites Leistungs-Label
-    const leistungMatch = text.match(/(?:Leistung|Betreff|Auftrag)[:\s]*\n?([^\n$]{5,})/i);
+    // Priorität 1: explizites Leistungs-Label (Wortgrenze verhindert Match in "Auftragsnummer")
+    const leistungMatch = text.match(/\b(?:Leistung|Betreff|Auftrag)\b[:\s]*\n?([^\n$]{5,})/i);
     if (leistungMatch) {
       repairContext = leistungMatch[1]
         .replace(/\$[a-z]+\$[^\$]*\$[a-z]+\$/gi, '')  // $anA$...$anE$ entfernen
@@ -323,9 +323,12 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
         !/^[!#$@*]/.test(l) &&
         !/^(?:Firma|Seite|Datum|Kunden|Rechnung|Kennzeichen|Marke|Modell|FIN|HRB|USt|Steuer|IBAN|BIC|DE[0-9]|Pos\s|Menge|Hausan)/i.test(l) &&
         !/^\d+\s+[\d,]+\s+\w+/.test(l) &&
-        // Zahlungsbedingungen / Footer-Texte ausschließen
+        // Zahlungsbedingungen / Footer / Adresszeilen ausschließen
         !/Zahlbar|ohne Abzug|Skonto|Bankverbindung|Zahlungsziel|innerhalb von|Fälligkeit|Bitte überweisen|Bequem überweisen|Bezahlcode/i.test(l) &&
-        !/^(?:DE\d{2}|[A-Z]{6,}[0-9]{6,})/.test(l)  // IBAN / BIC
+        !/Geschäftsführer|Handelsregister|HRB-Nr|Ust\.-IdNr|Steuer-Nr|web:|email:|www\./i.test(l) &&
+        !/^(?:DE\d{2}|[A-Z]{6,}[0-9]{6,})/.test(l) &&  // IBAN / BIC
+        !/^(?:Cargo\s|Marker\s|Spedition\s|Firma\s)/i.test(l) &&   // Empfängeradresse
+        !/GmbH[+&]Co|GmbH\*/.test(l)  // Werkstatt-Briefkopf-Zeile
       );
       repairContext = posLine ? posLine.substring(0, 120) : '';
     }
