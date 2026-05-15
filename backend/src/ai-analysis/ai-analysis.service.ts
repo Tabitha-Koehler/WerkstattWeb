@@ -386,17 +386,88 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
     // ── Positionen ─────────────────────────────────────────────────────────
     const positions: InvoicePosition[] = [];
 
-    // Format A: "1  10,00  Liter  [Nr]  Bezeichnung  EP  GP  [M]"
-    const posFormatA = /^\s*(\d+)\s+([\d.,]+)\s+(\w+)\s+(?:\w+\s+)?(.+?)\s+([\d.]*,\d{2})\s+([\d.]*,\d{2})\s*[A-Z]?\s*$/gm;
-    for (const m of text.matchAll(posFormatA)) {
-      const qty = parseFloat(m[2].replace(',', '.'));
-      const desc = m[4].replace(/\s+/g, ' ').trim();
-      const ep = parseDE(m[5]);
-      const gp = parseDE(m[6]);
-      if (gp > 0 && gp <= (totalAmount || 99999) * 1.5 && desc.length > 2 &&
-          !/^(?:Summe|Gesamt|Brutto|Netto|MwSt|USt|Endbetrag)/i.test(desc)) {
-        positions.push({ description: desc, quantity: qty, unit: m[3], unitPrice: ep, totalPrice: gp, category: 'OTHER', isAnomaly: false, anomalyReason: null });
+    // Format C (zuerst): Hollenberg — Zeilen mit "###"-Prefix (Zeilennr. ersetzt)
+    // Beispiel: " ########Motorenöl 5W30LL incl. Altölentsorg348,05 €273,70 €ltr."
+    // Felder ohne Trennzeichen concateniert: desc + qty + EP + GP + unit
+    const hollenbergLines = text.match(/^\s*#{3,}.+€.+€/gm) || [];
+    if (hollenbergLines.length > 0) {
+      for (const line of hollenbergLines) {
+        // Führende # (und Leerzeichen) entfernen, trailing whitespace trimmen
+        const stripped = line.replace(/^\s*#+\s*/, '').trimEnd();
+        // Split by " €" — letztes Segment = Einheit, vorletztes = GP, drittletztes enthält EP am Ende
+        const priceParts = stripped.split(' €');
+        if (priceParts.length < 2) continue;
+        const unit = (priceParts[priceParts.length - 1] || '').trim().replace(/^[.,\s]+/, '');
+        const gpRaw = (priceParts[priceParts.length - 2] || '').trim();
+        const gpNumMatch = gpRaw.match(/(\d{1,3}(?:\.\d{3})*,\d{2})$/);
+        const gp = parseDE(gpNumMatch?.[1] || gpRaw);
+        if (!gp || gp <= 0 || isNaN(gp)) continue;
+        let ep = gp;
+        let descQtyPart = '';
+        if (priceParts.length >= 3) {
+          const thirdLast = priceParts[priceParts.length - 3];
+          const epMatch = thirdLast.match(/(\d{1,3}(?:\.\d{3})*,\d{2})$/);
+          if (epMatch) {
+            ep = parseDE(epMatch[1]);
+            descQtyPart = thirdLast.slice(0, thirdLast.length - epMatch[0].length);
+          } else {
+            descQtyPart = priceParts.slice(0, priceParts.length - 2).join(' €');
+          }
+        } else {
+          // Nur 2 Teile: erster Teil ist desc+qty+EP zusammen (kein extra EP)
+          descQtyPart = priceParts[0];
+        }
+        // Menge am Ende von descQtyPart extrahieren
+        const qtyMatch = descQtyPart.match(/(\d+(?:,\d+)?)\s*$/);
+        let qty = 1;
+        let desc = descQtyPart.trim();
+        if (qtyMatch) {
+          const parsedQty = parseFloat(qtyMatch[1].replace(',', '.'));
+          if (!isNaN(parsedQty) && parsedQty > 0 && parsedQty < 10000) {
+            qty = parsedQty;
+            desc = descQtyPart.slice(0, descQtyPart.length - qtyMatch[0].length).trim();
+          }
+        }
+        // Falsch-Extraktion rückgängig machen für bekannte Muster:
+        // 1. Reifengröße (z.B. "315/70R22,5") — Felgengröße ist Teil der Beschreibung
+        // 2. Ölviskosität (z.B. "5W30") — Viskositätszahl ist Teil der Beschreibung
+        // 3. §-Paragraphen (z.B. "SP §29") — Paragraphennummer ist Teil der Beschreibung
+        if (
+          /\d+\/\d+[A-Z]/i.test(descQtyPart) ||
+          /\d+W$/i.test(desc) ||
+          descQtyPart.includes('§')
+        ) {
+          qty = 1;
+          desc = descQtyPart.trim();
+        }
+        // Abschließende Artefakte entfernen:
+        // 1. Hängendes Komma (z.B. "Schmierfett1,")
+        desc = desc.replace(/[,]\s*$/, '').trim();
+        // 2. Einzelne Ziffer direkt nach einem Buchstaben am Ende (z.B. "Schmierfett1" → "Schmierfett")
+        //    Nur einzelne Ziffer — mehrstell. Zahlen wie "5W30" oder "§291" werden nicht berührt
+        desc = desc.replace(/([A-Za-zÄÖÜäöüß])\d$/, '$1').trim();
+        if (desc.length < 2) continue;
+        if (/^(?:Summe|Gesamt|Brutto|Netto|MwSt|USt|Endbetrag)/i.test(desc)) continue;
+        // Kein €-Zeichen oder Mail-Marker in der Beschreibung
+        if (desc.includes('€') || desc.includes('$anA') || desc.includes('$anE')) continue;
+        positions.push({ description: desc, quantity: qty, unit: unit || 'Stk', unitPrice: ep, totalPrice: gp, category: 'OTHER', isAnomaly: false, anomalyReason: null });
         if (positions.length >= 20) break;
+      }
+    }
+
+    // Format A: "1  10,00  Liter  [Nr]  Bezeichnung  EP  GP  [M]"
+    if (positions.length === 0) {
+      const posFormatA = /^\s*(\d+)\s+([\d.,]+)\s+(\w+)\s+(?:\w+\s+)?(.+?)\s+([\d.]*,\d{2})\s+([\d.]*,\d{2})\s*[A-Z]?\s*$/gm;
+      for (const m of text.matchAll(posFormatA)) {
+        const qty = parseFloat(m[2].replace(',', '.'));
+        const desc = m[4].replace(/\s+/g, ' ').trim();
+        const ep = parseDE(m[5]);
+        const gp = parseDE(m[6]);
+        if (gp > 0 && gp <= (totalAmount || 99999) * 1.5 && desc.length > 2 &&
+            !/^(?:Summe|Gesamt|Brutto|Netto|MwSt|USt|Endbetrag)/i.test(desc)) {
+          positions.push({ description: desc, quantity: qty, unit: m[3], unitPrice: ep, totalPrice: gp, category: 'OTHER', isAnomaly: false, anomalyReason: null });
+          if (positions.length >= 20) break;
+        }
       }
     }
 
@@ -411,50 +482,6 @@ mileage: km-Stand aus Rechnung als Zahl oder null.`;
           positions.push({ description: desc, quantity: 1, unit: 'Stk', unitPrice: price, totalPrice: price, category: 'OTHER', isAnomaly: false, anomalyReason: null });
           if (positions.length >= 20) break;
         }
-      }
-    }
-
-    // Format C: Hollenberg — "######[desc][qty][EP €][GP €][unit]"
-    // Zeilennummer durch ### ersetzt, Felder ohne Trennzeichen concateniert
-    if (positions.length === 0) {
-      const hollenbergLines = text.match(/^#{3,}.+€.+€/gm) || [];
-      for (const line of hollenbergLines) {
-        const stripped = line.replace(/^#+\s*/, '').trim();
-        // Split by " €" — GP is second-to-last part, unit is after last " €"
-        const priceParts = stripped.split(' €');
-        if (priceParts.length < 2) continue;
-        const unit = (priceParts[priceParts.length - 1] || '').trim().replace(/^[.\s]+/, '');
-        const gpStr = (priceParts[priceParts.length - 2] || '').trim();
-        const gp = parseDE(gpStr.match(/(\d{1,3}(?:\.\d{3})*,\d{2})$/)?.[1] || gpStr);
-        if (!gp || gp <= 0 || isNaN(gp)) continue;
-        let ep = gp;
-        let descQtyPart = '';
-        if (priceParts.length >= 3) {
-          const thirdLast = priceParts[priceParts.length - 3];
-          const epMatch = thirdLast.match(/(\d{1,3}(?:\.\d{3})*,\d{2})$/);
-          if (epMatch) {
-            ep = parseDE(epMatch[1]);
-            descQtyPart = thirdLast.slice(0, thirdLast.length - epMatch[0].length);
-          } else {
-            descQtyPart = priceParts.slice(0, priceParts.length - 2).join(' €');
-          }
-        } else {
-          descQtyPart = priceParts[0];
-        }
-        const qtyMatch = descQtyPart.match(/(\d+(?:,\d+)?)\s*$/);
-        let qty = 1;
-        let desc = descQtyPart.trim();
-        if (qtyMatch) {
-          const parsedQty = parseFloat(qtyMatch[1].replace(',', '.'));
-          if (!isNaN(parsedQty) && parsedQty > 0 && parsedQty < 10000) {
-            qty = parsedQty;
-            desc = descQtyPart.slice(0, descQtyPart.length - qtyMatch[0].length).trim();
-          }
-        }
-        if (desc.length < 2) continue;
-        if (/^(?:Summe|Gesamt|Brutto|Netto|MwSt|USt|Endbetrag)/i.test(desc)) continue;
-        positions.push({ description: desc, quantity: qty, unit: unit || 'Stk', unitPrice: ep, totalPrice: gp, category: 'OTHER', isAnomaly: false, anomalyReason: null });
-        if (positions.length >= 20) break;
       }
     }
 

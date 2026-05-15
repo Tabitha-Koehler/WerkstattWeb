@@ -517,45 +517,83 @@ export class InvoicesService {
           }
         }
 
-        // Bestehende Positionen mit Anomalie-Flags aktualisieren
-        const positions = await this.positionRepo.find({ where: { invoiceId: inv.id } });
         let invoiceHasAnomaly = false;
+        const newPositions = analysis.positions ?? [];
 
-        for (const pos of positions) {
-          const key = pos.description?.toLowerCase() ?? '';
-          // Exakter Treffer oder Teil-Treffer
-          let anomalyReason: string | null = anomalyMap.get(key) ?? null;
-          if (!anomalyReason) {
-            for (const [keyword, reason] of anomalyMap) {
-              if (key.includes(keyword) || keyword.includes(key.substring(0, 8))) {
-                anomalyReason = reason;
-                break;
+        // Bestehende Garbage-Positionen immer bereinigen (€-Zeichen in Beschreibung = Extraktionsfehler)
+        const existingPositions = await this.positionRepo.find({ where: { invoiceId: inv.id } });
+        const garbageIds = existingPositions
+          .filter(p => p.description?.includes('€') || p.description?.includes('$an'))
+          .map(p => p.id);
+        if (garbageIds.length > 0) {
+          await this.positionRepo.delete(garbageIds);
+        }
+
+        if (newPositions.length > 0) {
+          // Analyse hat Positionen gefunden → alte löschen und neue einsetzen
+          await this.positionRepo.delete({ invoiceId: inv.id });
+          for (const p of newPositions) {
+            // Anomalie aus Map ergänzen
+            const key = p.description?.toLowerCase() ?? '';
+            let anomalyReason: string | null = p.anomalyReason ?? anomalyMap.get(key) ?? null;
+            if (!anomalyReason) {
+              for (const [keyword, reason] of anomalyMap) {
+                if (key.includes(keyword) || keyword.includes(key.substring(0, 8))) {
+                  anomalyReason = reason;
+                  break;
+                }
               }
             }
+            const isAnomaly = !!anomalyReason;
+            if (isAnomaly) invoiceHasAnomaly = true;
+            await this.positionRepo.save(this.positionRepo.create({
+              invoiceId: inv.id,
+              description: p.description,
+              quantity: p.quantity,
+              unit: p.unit,
+              unitPrice: p.unitPrice,
+              totalPrice: p.totalPrice,
+              category: p.category as any ?? PositionCategory.OTHER,
+              isAnomaly,
+              anomalyReason,
+            }));
           }
-          // Kategorie aus KI übernehmen wenn verfügbar
-          const aiPos = (analysis.positions ?? []).find(p =>
-            p.description?.toLowerCase() === key ||
-            key.includes(p.description?.toLowerCase()?.substring(0, 8) ?? '___')
-          );
-
-          const changed =
-            pos.isAnomaly !== !!anomalyReason ||
-            pos.anomalyReason !== (anomalyReason ?? null) ||
-            (aiPos && pos.category !== aiPos.category as any);
-
-          if (changed) {
-            pos.isAnomaly = !!anomalyReason;
-            pos.anomalyReason = anomalyReason;
-            if (aiPos && aiPos.category) pos.category = aiPos.category as any;
-            await this.positionRepo.save(pos);
+        } else {
+          // Keine neuen Positionen → nur Anomalie-Flags bestehender aktualisieren
+          const positions = await this.positionRepo.find({ where: { invoiceId: inv.id } });
+          for (const pos of positions) {
+            const key = pos.description?.toLowerCase() ?? '';
+            let anomalyReason: string | null = anomalyMap.get(key) ?? null;
+            if (!anomalyReason) {
+              for (const [keyword, reason] of anomalyMap) {
+                if (key.includes(keyword) || keyword.includes(key.substring(0, 8))) {
+                  anomalyReason = reason;
+                  break;
+                }
+              }
+            }
+            const aiPos = newPositions.find(p =>
+              p.description?.toLowerCase() === key ||
+              key.includes(p.description?.toLowerCase()?.substring(0, 8) ?? '___')
+            );
+            const changed =
+              pos.isAnomaly !== !!anomalyReason ||
+              pos.anomalyReason !== (anomalyReason ?? null) ||
+              (aiPos && pos.category !== aiPos.category as any);
+            if (changed) {
+              pos.isAnomaly = !!anomalyReason;
+              pos.anomalyReason = anomalyReason;
+              if (aiPos && aiPos.category) pos.category = aiPos.category as any;
+              await this.positionRepo.save(pos);
+            }
+            if (pos.isAnomaly) invoiceHasAnomaly = true;
           }
-          if (pos.isAnomaly) invoiceHasAnomaly = true;
         }
 
         // Anomalien ohne passende Position als eigene Positionen speichern
+        const allPositions = await this.positionRepo.find({ where: { invoiceId: inv.id } });
         for (const [keyword, reason] of anomalyMap) {
-          const alreadyCovered = positions.some(p =>
+          const alreadyCovered = allPositions.some(p =>
             p.description?.toLowerCase().includes(keyword)
           );
           if (!alreadyCovered) {
